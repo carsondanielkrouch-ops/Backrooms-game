@@ -394,6 +394,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/GLTFLoader.js"></script>
 
 <script>
 (() => {
@@ -759,6 +760,7 @@
 
         flickerLights.push({
           light,
+          position: position.clone(),
           base: 0.45 + rng() * 0.22,
           phase: rng() * 10
         });
@@ -1009,179 +1011,143 @@
     return bone;
   }
 
-  function makeMonster() {
+  let monsterMixer = null;
+
+  function makeMonsterFallback() {
     const group = new THREE.Group();
 
-    const blackWire = new THREE.MeshBasicMaterial({
-      color: 0x030303,
-      wireframe: true
-    });
-
-    const blackSolid = new THREE.MeshBasicMaterial({
-      color: 0x080808
+    const material = new THREE.MeshStandardMaterial({
+      color: 0x171010,
+      emissive: 0x080000,
+      emissiveIntensity: 0.28,
+      roughness: 0.94
     });
 
     const torso = new THREE.Mesh(
-      new THREE.CylinderGeometry(
-        0.18,
-        0.31,
-        1.55,
-        6,
-        4,
-        true
-      ),
-      blackWire
+      new THREE.CylinderGeometry(0.24, 0.38, 1.7, 7, 3, true),
+      material
     );
 
-    torso.position.y = 1.83;
+    torso.position.y = 1.75;
     group.add(torso);
 
-    const ribs = [];
-
-    for (let i = 0; i < 6; i++) {
-      const rib = new THREE.Mesh(
-        new THREE.TorusGeometry(
-          0.24 + i * 0.015,
-          0.018,
-          4,
-          8,
-          Math.PI * 1.5
-        ),
-        blackWire
-      );
-
-      rib.position.y = 1.35 + i * 0.2;
-      rib.rotation.set(Math.PI / 2, 0, 0.8);
-      group.add(rib);
-      ribs.push(rib);
-    }
-
-    const neck = makeBone(
-      0.46,
-      0.075,
-      blackSolid
-    );
-
-    neck.position.set(0, 2.7, 0);
-    group.add(neck);
-
     const head = new THREE.Mesh(
-      new THREE.IcosahedronGeometry(0.33, 1),
-      blackWire
+      new THREE.SphereGeometry(0.32, 8, 6),
+      material
     );
 
-    head.scale.set(0.72, 1.5, 0.72);
-    head.position.y = 2.94;
+    head.scale.set(0.72, 1.25, 0.72);
+    head.position.y = 2.88;
     group.add(head);
 
-    const eyeMaterial = new THREE.MeshBasicMaterial({
-      color: 0xff180f
-    });
+    for (const side of [-1, 1]) {
+      const armPivot = new THREE.Group();
+      armPivot.position.set(side * 0.36, 2.36, 0);
+      armPivot.rotation.z = side * 0.8;
+      group.add(armPivot);
 
-    for (const x of [-0.105, 0.105]) {
-      const eye = new THREE.Mesh(
-        new THREE.SphereGeometry(0.025, 5, 4),
-        eyeMaterial
-      );
+      const arm = makeBone(1.55, 0.07, material);
+      armPivot.add(arm);
 
-      eye.position.set(x, 3.02, -0.25);
-      group.add(eye);
+      const forearmPivot = new THREE.Group();
+      forearmPivot.position.y = -1.55;
+      forearmPivot.rotation.z = -side * 0.42;
+      armPivot.add(forearmPivot);
+
+      forearmPivot.add(makeBone(1.35, 0.05, material));
+
+      const legPivot = new THREE.Group();
+      legPivot.position.set(side * 0.2, 1.0, 0);
+      legPivot.rotation.z = side * 0.17;
+      group.add(legPivot);
+      legPivot.add(makeBone(1.35, 0.085, material));
     }
-
-    const limbs = [];
-
-    function limb(
-      x,
-      y,
-      z,
-      upperLength,
-      lowerLength,
-      isArm,
-      side
-    ) {
-      const upperPivot = new THREE.Group();
-
-      upperPivot.position.set(x, y, z);
-      group.add(upperPivot);
-
-      const upper = makeBone(
-        upperLength,
-        isArm ? 0.065 : 0.085,
-        blackWire
-      );
-
-      upperPivot.add(upper);
-
-      const lowerPivot = new THREE.Group();
-      lowerPivot.position.y = -upperLength;
-      upperPivot.add(lowerPivot);
-
-      const lower = makeBone(
-        lowerLength,
-        isArm ? 0.045 : 0.065,
-        blackWire
-      );
-
-      lowerPivot.add(lower);
-
-      if (isArm) {
-        upperPivot.rotation.z = side * 0.14;
-        lowerPivot.rotation.z = side * 0.12;
-      }
-
-      limbs.push({
-        upperPivot,
-        lowerPivot,
-        arm: isArm,
-        side
-      });
-    }
-
-    limb(
-      -0.24,
-      2.48,
-      0,
-      1.28,
-      1.18,
-      true,
-      -1
-    );
-
-    limb(
-      0.24,
-      2.48,
-      0,
-      1.28,
-      1.18,
-      true,
-      1
-    );
-
-    limb(
-      -0.13,
-      1.23,
-      0,
-      0.78,
-      0.82,
-      false,
-      -1
-    );
-
-    limb(
-      0.13,
-      1.23,
-      0,
-      0.78,
-      0.82,
-      false,
-      1
-    );
 
     group.userData = {
-      limbs,
-      head,
-      ribs
+      fallback: true,
+      limbs: [],
+      ribs: [],
+      head
     };
+
+    return group;
+  }
+
+  function normalizeMonsterModel(model) {
+    const box = new THREE.Box3().setFromObject(model);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    const maxAxis = Math.max(size.x, size.y, size.z) || 1;
+    const scale = 3.35 / maxAxis;
+
+    model.position.sub(center);
+    model.scale.multiplyScalar(scale);
+
+    const normalizedBox = new THREE.Box3().setFromObject(model);
+    model.position.y -= normalizedBox.min.y;
+  }
+
+  function makeMonster() {
+    const group = new THREE.Group();
+    const fallback = makeMonsterFallback();
+
+    group.add(fallback);
+    group.userData = fallback.userData;
+
+    if (!THREE.GLTFLoader) {
+      console.warn("GLTFLoader unavailable; using fallback monster.");
+      return group;
+    }
+
+    const loader = new THREE.GLTFLoader();
+
+    loader.load(
+      "bacteria_lifeform_backrooms.glb",
+      (gltf) => {
+        const model = gltf.scene;
+
+        normalizeMonsterModel(model);
+
+        model.traverse((child) => {
+          if (!child.isMesh) {
+            return;
+          }
+
+          child.frustumCulled = false;
+
+          if (child.material) {
+            child.material.side = THREE.DoubleSide;
+            child.material.roughness = Math.max(
+              child.material.roughness ?? 0.75,
+              0.75
+            );
+          }
+        });
+
+        group.clear();
+        group.add(model);
+        group.userData = {
+          glbModel: model,
+          limbs: [],
+          ribs: [],
+          head: model
+        };
+
+        if (gltf.animations.length > 0) {
+          monsterMixer = new THREE.AnimationMixer(model);
+
+          for (const clip of gltf.animations) {
+            monsterMixer.clipAction(clip).play();
+          }
+        }
+      },
+      undefined,
+      () => {
+        console.warn(
+          "bacteria_lifeform_backrooms.glb could not be loaded; using fallback monster."
+        );
+      }
+    );
 
     return group;
   }
@@ -1462,7 +1428,7 @@
     )();
 
     humGain = audioContext.createGain();
-    humGain.gain.value = 0.15;
+    humGain.gain.value = 0.0;
     humGain.connect(audioContext.destination);
 
     const hum = audioContext.createOscillator();
@@ -1470,7 +1436,7 @@
     hum.frequency.value = 60;
 
     const humVolume = audioContext.createGain();
-    humVolume.gain.value = 0.19;
+    humVolume.gain.value = 0.052;
 
     hum
       .connect(humVolume)
@@ -1483,7 +1449,7 @@
     buzz.frequency.value = 3480;
 
     const buzzVolume = audioContext.createGain();
-    buzzVolume.gain.value = 0.012;
+    buzzVolume.gain.value = 0.0035;
 
     buzz
       .connect(buzzVolume)
@@ -1525,7 +1491,7 @@
     const noiseGain =
       audioContext.createGain();
 
-    noiseGain.gain.value = 0.012;
+    noiseGain.gain.value = 0.003;
 
     noiseSource
       .connect(noiseFilter)
@@ -1537,7 +1503,7 @@
 
   function noiseBurst(
     duration = 0.12,
-    gain = 0.12,
+    gain = 0.045,
     frequency = 430
   ) {
     if (!audioContext || !noiseBuffer) {
@@ -1594,10 +1560,10 @@
           ? 0.055
           : 0.095,
       mode === "sprint"
-        ? 0.2
+        ? 0.065
         : mode === "sneak"
-          ? 0.035
-          : 0.095,
+          ? 0.012
+          : 0.032,
       mode === "sprint"
         ? 280
         : 390
@@ -1677,7 +1643,7 @@
         audioContext.currentTime + 0.01;
 
       const volume =
-        0.018 + danger * 0.22;
+        0.012 + danger * 0.085;
 
       thump(now, volume);
       thump(now + 0.13, volume * 0.72);
@@ -2246,6 +2212,10 @@
       }
     }
 
+    if (monsterMixer) {
+      monsterMixer.update(deltaTime);
+    }
+
     const monsterData =
       monster.userData;
 
@@ -2334,11 +2304,11 @@
     );
 
     if (
-      distance < 1.05 &&
+      distance < 1.85 &&
       !player.dead
     ) {
       player.health -=
-        deltaTime * 34;
+        deltaTime * 62;
 
       shake = Math.max(
         shake,
@@ -2349,7 +2319,7 @@
 
       noiseBurst(
         0.06,
-        0.045,
+        0.018,
         240
       );
 
@@ -2449,8 +2419,43 @@
 
     noiseBurst(
       1.8,
-      0.35,
+      0.12,
       1700
+    );
+  }
+
+
+  function updateLightHum() {
+    if (!audioContext || !humGain) {
+      return;
+    }
+
+    let nearestDistance = Infinity;
+
+    for (const entry of flickerLights) {
+      const distance = Math.hypot(
+        player.pos.x - entry.position.x,
+        player.pos.z - entry.position.z
+      );
+
+      nearestDistance = Math.min(
+        nearestDistance,
+        distance
+      );
+    }
+
+    const proximity = 1 - clamp(
+      (nearestDistance - 2.5) / 9.5,
+      0,
+      1
+    );
+
+    const targetGain = proximity * proximity * 0.18;
+
+    humGain.gain.setTargetAtTime(
+      targetGain,
+      audioContext.currentTime,
+      0.12
     );
   }
 
@@ -2698,6 +2703,8 @@
 
       updateHatch();
     }
+
+    updateLightHum();
 
     updateEffects(
       deltaTime,
