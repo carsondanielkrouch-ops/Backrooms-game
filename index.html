@@ -1,0 +1,2718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>BACKROOMS // RECOVERED TAPE</title>
+<style>
+  :root {
+    --hud: #d9e7c6;
+    --danger: #ff3b30;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: #000;
+    font-family: "Courier New", monospace;
+  }
+
+  canvas {
+    display: block;
+    width: 100vw !important;
+    height: 100vh !important;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    cursor: none;
+  }
+
+  #hud,
+  #vignette,
+  #scanlines,
+  #noise,
+  #damage,
+  #prompt,
+  #toast,
+  #start,
+  #ending {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  #hud {
+    color: var(--hud);
+    text-shadow: 0 0 4px #000, 0 0 8px #000;
+    font-weight: bold;
+    font-size: clamp(12px, 1.35vw, 18px);
+    z-index: 10;
+  }
+
+  .corner {
+    position: absolute;
+    padding: 18px 22px;
+  }
+
+  #rec {
+    top: 0;
+    left: 0;
+    color: #ff5148;
+    letter-spacing: 1px;
+    animation: recPulse 1.05s steps(2, end) infinite;
+  }
+
+  #clock {
+    top: 0;
+    right: 0;
+    text-align: right;
+  }
+
+  #objective {
+    left: 0;
+    bottom: 0;
+    line-height: 1.45;
+  }
+
+  #meters {
+    right: 0;
+    bottom: 0;
+    width: min(310px, 42vw);
+  }
+
+  .meterRow {
+    display: grid;
+    grid-template-columns: 76px 1fr 42px;
+    gap: 8px;
+    align-items: center;
+    margin-top: 5px;
+  }
+
+  .bar {
+    height: 9px;
+    border: 1px solid rgba(217, 231, 198, 0.85);
+    background: rgba(0, 0, 0, 0.55);
+    box-shadow: 0 0 5px #000 inset;
+  }
+
+  .fill {
+    height: 100%;
+    width: 100%;
+    background: var(--hud);
+    transition: width 0.08s linear;
+  }
+
+  #healthFill.low {
+    background: #ff554f;
+  }
+
+  #batteryFill.low {
+    animation: lowPulse 0.35s steps(2, end) infinite;
+    background: #ffb142;
+  }
+
+  #prompt {
+    inset: auto 0 14%;
+    text-align: center;
+    z-index: 13;
+    color: #fff6cf;
+    font-weight: bold;
+    font-size: clamp(13px, 1.4vw, 20px);
+    text-shadow: 0 2px 6px #000;
+    opacity: 0;
+    transition: opacity 0.12s;
+  }
+
+  #toast {
+    inset: 15% 0 auto;
+    text-align: center;
+    z-index: 14;
+    color: #fff;
+    font-weight: bold;
+    letter-spacing: 2px;
+    opacity: 0;
+    transition: opacity 0.18s;
+    text-shadow: 0 0 8px #000;
+  }
+
+  #vignette {
+    z-index: 7;
+    background: radial-gradient(
+      ellipse at center,
+      transparent 42%,
+      rgba(0, 0, 0, 0.22) 68%,
+      rgba(0, 0, 0, 0.78) 100%
+    );
+  }
+
+  #scanlines {
+    z-index: 8;
+    opacity: 0.28;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.035) 0,
+      rgba(255, 255, 255, 0.035) 1px,
+      rgba(0, 0, 0, 0.13) 2px,
+      rgba(0, 0, 0, 0.13) 4px
+    );
+    animation: scanMove 0.16s linear infinite;
+    mix-blend-mode: overlay;
+  }
+
+  #noise {
+    z-index: 9;
+    opacity: 0.065;
+    background-image:
+      repeating-radial-gradient(
+        circle at 17% 23%,
+        rgba(255, 255, 255, 0.75) 0 1px,
+        transparent 1px 3px
+      ),
+      repeating-linear-gradient(
+        97deg,
+        transparent 0 4px,
+        rgba(255, 255, 255, 0.15) 5px,
+        transparent 6px 11px
+      );
+    background-size: 83px 67px, 119px 43px;
+    animation: noiseShift 0.12s steps(2, end) infinite;
+    mix-blend-mode: screen;
+  }
+
+  #damage {
+    z-index: 11;
+    background: radial-gradient(
+      circle,
+      transparent 25%,
+      rgba(130, 0, 0, 0.88) 100%
+    );
+    opacity: 0;
+    transition: opacity 0.07s;
+  }
+
+  #start,
+  #ending {
+    z-index: 30;
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(
+      circle at center,
+      rgba(31, 30, 18, 0.84),
+      rgba(0, 0, 0, 0.98)
+    );
+    color: #ded8aa;
+    text-align: center;
+    cursor: default;
+  }
+
+  #start.hidden,
+  #ending.hidden {
+    display: none;
+  }
+
+  .panel {
+    width: min(680px, 90vw);
+    padding: 34px 38px;
+    border: 1px solid rgba(222, 216, 170, 0.55);
+    background: rgba(0, 0, 0, 0.72);
+    box-shadow: 0 0 60px rgba(255, 238, 137, 0.1);
+  }
+
+  h1 {
+    margin: 0 0 14px;
+    font-size: clamp(28px, 5vw, 64px);
+    letter-spacing: 0.12em;
+    line-height: 1;
+  }
+
+  .sub {
+    color: #a9a681;
+    line-height: 1.55;
+    margin: 12px auto 22px;
+    max-width: 560px;
+  }
+
+  button {
+    pointer-events: auto;
+    border: 1px solid #d9d0a4;
+    background: #17170f;
+    color: #eee7bd;
+    font: 700 16px "Courier New", monospace;
+    padding: 12px 20px;
+    letter-spacing: 2px;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background: #d9d0a4;
+    color: #111;
+  }
+
+  #ending {
+    background: #000;
+  }
+
+  #ending .panel {
+    animation: endFlicker 0.11s steps(2, end) infinite;
+  }
+
+  #ending.gameover h1 {
+    color: #ff4d46;
+  }
+
+  #crosshair {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 4px;
+    height: 4px;
+    margin: -2px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+  }
+
+  @keyframes recPulse {
+    50% {
+      opacity: 0.35;
+    }
+  }
+
+  @keyframes lowPulse {
+    50% {
+      opacity: 0.2;
+    }
+  }
+
+  @keyframes scanMove {
+    to {
+      transform: translateY(4px);
+    }
+  }
+
+  @keyframes noiseShift {
+    0% {
+      transform: translate(0, 0);
+    }
+    25% {
+      transform: translate(-2%, 1%);
+    }
+    50% {
+      transform: translate(1%, -2%);
+    }
+    75% {
+      transform: translate(2%, 2%);
+    }
+    100% {
+      transform: translate(-1%, -1%);
+    }
+  }
+
+  @keyframes endFlicker {
+    50% {
+      opacity: 0.84;
+      transform: translateX(1px);
+    }
+  }
+</style>
+</head>
+<body>
+
+<div id="hud">
+  <div id="rec" class="corner">● REC</div>
+
+  <div id="clock" class="corner">
+    <div id="dateText">--/--/----</div>
+    <div id="timeText">--:--:--</div>
+  </div>
+
+  <div id="objective" class="corner">
+    <div>OBJECTIVE: FIND THE KEYS</div>
+    <div id="keyText">KEYS 0/3</div>
+    <div id="stateText">SIGNAL: SEARCHING</div>
+  </div>
+
+  <div id="meters" class="corner">
+    <div class="meterRow">
+      <span>HEALTH</span>
+      <div class="bar"><div id="healthFill" class="fill"></div></div>
+      <span id="healthText">100</span>
+    </div>
+
+    <div class="meterRow">
+      <span>STAMINA</span>
+      <div class="bar"><div id="staminaFill" class="fill"></div></div>
+      <span id="staminaText">100</span>
+    </div>
+
+    <div class="meterRow">
+      <span>BATTERY</span>
+      <div class="bar"><div id="batteryFill" class="fill"></div></div>
+      <span id="batteryText">100</span>
+    </div>
+  </div>
+
+  <div id="crosshair"></div>
+</div>
+
+<div id="vignette"></div>
+<div id="scanlines"></div>
+<div id="noise"></div>
+<div id="damage"></div>
+<div id="prompt"></div>
+<div id="toast"></div>
+
+<div id="start">
+  <div class="panel">
+    <h1>BACKROOMS</h1>
+
+    <div class="sub">
+      RECOVERED TAPE 07 — Find three keys, preserve the flashlight,
+      and unlock the marked floor hatch.
+      <br><br>
+      WASD / ARROWS: MOVE &nbsp; SHIFT: SPRINT &nbsp; CTRL/C: SNEAK
+      <br>
+      F: FLASHLIGHT &nbsp; E: INTERACT &nbsp; ESC: RELEASE MOUSE
+    </div>
+
+    <button id="enterBtn">ENTER THE TAPE</button>
+  </div>
+</div>
+
+<div id="ending" class="hidden">
+  <div class="panel">
+    <h1 id="endTitle">GAME OVER</h1>
+    <div id="endText" class="sub"></div>
+    <button onclick="location.reload()">REWIND TAPE</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+
+<script>
+(() => {
+  "use strict";
+
+  const MAP = [
+    "#####################",
+    "#S#..........B..#...#",
+    "#.###.###.#####.#.#.#",
+    "#...#.#B..#...#...#.#",
+    "###.###.#.#...#####.#",
+    "#.#.#...#...#.......#",
+    "#.#...#######.###.#.#",
+    "#..B#...#.....#...#.#",
+    "#.###.#.#.#########.#",
+    "#.#.....#.........#.#",
+    "#.#.#####.#######.#.#",
+    "#...#.....#.....#...#",
+    "#####.###.#.#########",
+    "#K..#.#.#.........#.#",
+    "#.#.#.#.#.###.....#.#",
+    "#.....#.....#.......#",
+    "#.######..###.....#.#",
+    "#.#...............#.#",
+    "#.###.#########.#.#.#",
+    "#.....#EK.......#.MK#",
+    "#####################"
+  ];
+
+  const CELL = 4;
+  const WALL_H = 3.25;
+  const EYE_H = 1.62;
+  const PLAYER_R = 0.38;
+  const ROWS = MAP.length;
+  const COLS = MAP[0].length;
+
+  const renderer = new THREE.WebGLRenderer({
+    antialias: false,
+    powerPreference: "high-performance"
+  });
+
+  renderer.setPixelRatio(1);
+  renderer.setSize(400, 300, false);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.shadowMap.enabled = false;
+  renderer.domElement.id = "gameCanvas";
+  document.body.prepend(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x19180f);
+  scene.fog = new THREE.FogExp2(0x252316, 0.036);
+
+  const camera = new THREE.PerspectiveCamera(72, 4 / 3, 0.05, 70);
+  camera.rotation.order = "YXZ";
+
+  const $ = (id) => document.getElementById(id);
+
+  const ui = {
+    start: $("start"),
+    enter: $("enterBtn"),
+    ending: $("ending"),
+    endTitle: $("endTitle"),
+    endText: $("endText"),
+    healthFill: $("healthFill"),
+    staminaFill: $("staminaFill"),
+    batteryFill: $("batteryFill"),
+    healthText: $("healthText"),
+    staminaText: $("staminaText"),
+    batteryText: $("batteryText"),
+    keyText: $("keyText"),
+    stateText: $("stateText"),
+    prompt: $("prompt"),
+    toast: $("toast"),
+    damage: $("damage"),
+    noise: $("noise")
+  };
+
+  function gridToWorld(c, r) {
+    return new THREE.Vector3(
+      (c - COLS / 2 + 0.5) * CELL,
+      0,
+      (r - ROWS / 2 + 0.5) * CELL
+    );
+  }
+
+  function worldToGrid(x, z) {
+    return {
+      c: Math.floor(x / CELL + COLS / 2),
+      r: Math.floor(z / CELL + ROWS / 2)
+    };
+  }
+
+  function walkable(r, c) {
+    return (
+      r >= 0 &&
+      c >= 0 &&
+      r < ROWS &&
+      c < COLS &&
+      MAP[r][c] !== "#"
+    );
+  }
+
+  function cellKey(r, c) {
+    return `${r},${c}`;
+  }
+
+  function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  let seed = 0xc0ffee;
+
+  function rng() {
+    seed ^= seed << 13;
+    seed ^= seed >>> 17;
+    seed ^= seed << 5;
+    return ((seed >>> 0) % 100000) / 100000;
+  }
+
+  function canvasTexture(size, draw) {
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+
+    const context = canvas.getContext("2d");
+    draw(context, size);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.magFilter = THREE.NearestFilter;
+    texture.minFilter = THREE.NearestMipmapNearestFilter;
+    texture.colorSpace = THREE.SRGBColorSpace;
+
+    return texture;
+  }
+
+  const wallTex = canvasTexture(128, (ctx, size) => {
+    ctx.fillStyle = "#aca16a";
+    ctx.fillRect(0, 0, size, size);
+
+    for (let x = 0; x < size; x += 16) {
+      ctx.fillStyle = "rgba(72,65,35,.12)";
+      ctx.fillRect(x, 0, 2, size);
+
+      ctx.fillStyle = "rgba(255,247,178,.08)";
+      ctx.fillRect(x + 3, 0, 1, size);
+    }
+
+    for (let i = 0; i < 850; i++) {
+      const value = (95 + Math.random() * 75) | 0;
+      ctx.fillStyle =
+        `rgba(${value},${value - 7},${value - 35},${Math.random() * 0.08})`;
+
+      ctx.fillRect(
+        Math.random() * size,
+        Math.random() * size,
+        1,
+        1
+      );
+    }
+
+    ctx.fillStyle = "rgba(70,58,22,.12)";
+
+    for (let y = 8; y < size; y += 31) {
+      ctx.fillRect(0, y, size, 1);
+    }
+  });
+
+  wallTex.repeat.set(1.25, 1);
+
+  const carpetTex = canvasTexture(128, (ctx, size) => {
+    ctx.fillStyle = "#514d3e";
+    ctx.fillRect(0, 0, size, size);
+
+    const imageData = ctx.getImageData(0, 0, size, size);
+
+    for (let i = 0; i < imageData.data.length; i += 4) {
+      const noise = (Math.random() * 38 - 19) | 0;
+      imageData.data[i] += noise;
+      imageData.data[i + 1] += noise;
+      imageData.data[i + 2] += noise / 2;
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+    ctx.globalAlpha = 0.08;
+    ctx.fillStyle = "#151814";
+
+    for (let i = 0; i < 80; i++) {
+      ctx.beginPath();
+
+      ctx.ellipse(
+        Math.random() * size,
+        Math.random() * size,
+        Math.random() * 18 + 3,
+        Math.random() * 5 + 1,
+        Math.random() * Math.PI,
+        0,
+        Math.PI * 2
+      );
+
+      ctx.fill();
+    }
+
+    ctx.globalAlpha = 1;
+  });
+
+  carpetTex.repeat.set(COLS * 0.8, ROWS * 0.8);
+
+  const ceilingTex = canvasTexture(128, (ctx, size) => {
+    ctx.fillStyle = "#b7b39b";
+    ctx.fillRect(0, 0, size, size);
+
+    ctx.strokeStyle = "#77745f";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(1, 1, size - 2, size - 2);
+
+    ctx.strokeStyle = "rgba(255,255,255,.18)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(5, 5, size - 10, size - 10);
+
+    for (let i = 0; i < 240; i++) {
+      ctx.fillStyle = `rgba(60,58,50,${Math.random() * 0.12})`;
+
+      ctx.fillRect(
+        Math.random() * size,
+        Math.random() * size,
+        1,
+        1
+      );
+    }
+  });
+
+  ceilingTex.repeat.set(COLS / 2, ROWS / 2);
+
+  const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(COLS * CELL, ROWS * CELL),
+    new THREE.MeshStandardMaterial({
+      map: carpetTex,
+      color: 0x87816b,
+      roughness: 1,
+      metalness: 0
+    })
+  );
+
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.y = 0;
+  scene.add(floor);
+
+  const ceiling = new THREE.Mesh(
+    new THREE.PlaneGeometry(COLS * CELL, ROWS * CELL),
+    new THREE.MeshStandardMaterial({
+      map: ceilingTex,
+      color: 0x9d9a83,
+      roughness: 1,
+      side: THREE.DoubleSide
+    })
+  );
+
+  ceiling.rotation.x = Math.PI / 2;
+  ceiling.position.y = WALL_H;
+  scene.add(ceiling);
+
+  let wallCount = 0;
+
+  for (const row of MAP) {
+    for (const character of row) {
+      if (character === "#") {
+        wallCount++;
+      }
+    }
+  }
+
+  const wallMaterial = new THREE.MeshStandardMaterial({
+    map: wallTex,
+    color: 0xc0b674,
+    roughness: 0.96,
+    metalness: 0
+  });
+
+  const walls = new THREE.InstancedMesh(
+    new THREE.BoxGeometry(CELL, WALL_H, CELL),
+    wallMaterial,
+    wallCount
+  );
+
+  const dummy = new THREE.Object3D();
+  let wallIndex = 0;
+
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (MAP[r][c] !== "#") {
+        continue;
+      }
+
+      const position = gridToWorld(c, r);
+
+      dummy.position.set(
+        position.x,
+        WALL_H / 2,
+        position.z
+      );
+
+      dummy.updateMatrix();
+      walls.setMatrixAt(wallIndex++, dummy.matrix);
+    }
+  }
+
+  scene.add(walls);
+
+  scene.add(
+    new THREE.HemisphereLight(
+      0xc9c58d,
+      0x17150e,
+      0.32
+    )
+  );
+
+  const flickerLights = [];
+  const panelGeometry = new THREE.PlaneGeometry(1.9, 0.58);
+
+  for (let r = 1; r < ROWS - 1; r++) {
+    for (let c = 1; c < COLS - 1; c++) {
+      if (
+        walkable(r, c) &&
+        (r * 7 + c * 11) % 17 === 0 &&
+        flickerLights.length < 26
+      ) {
+        const position = gridToWorld(c, r);
+
+        const panel = new THREE.Mesh(
+          panelGeometry,
+          new THREE.MeshBasicMaterial({
+            color: 0xded9a2,
+            side: THREE.DoubleSide
+          })
+        );
+
+        panel.rotation.x = Math.PI / 2;
+
+        panel.position.set(
+          position.x,
+          WALL_H - 0.018,
+          position.z
+        );
+
+        scene.add(panel);
+
+        const light = new THREE.PointLight(
+          0xfff2a6,
+          0.55,
+          13,
+          2.1
+        );
+
+        light.position.set(
+          position.x,
+          WALL_H - 0.35,
+          position.z
+        );
+
+        scene.add(light);
+
+        flickerLights.push({
+          light,
+          base: 0.45 + rng() * 0.22,
+          phase: rng() * 10
+        });
+      }
+    }
+  }
+
+  const startCell = { r: 1, c: 1 };
+  const monsterCell = { r: 19, c: 18 };
+  const exitCell = { r: 19, c: 7 };
+
+  const keyCells = [];
+  const batteryCells = [];
+  const openCells = [];
+
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const character = MAP[r][c];
+
+      if (character !== "#") {
+        openCells.push({ r, c });
+      }
+
+      if (character === "K") {
+        keyCells.push({ r, c });
+      }
+
+      if (character === "B") {
+        batteryCells.push({ r, c });
+      }
+    }
+  }
+
+  while (batteryCells.length < 6) {
+    const cell = openCells[
+      Math.floor(rng() * openCells.length)
+    ];
+
+    const duplicate = batteryCells.some(
+      (battery) =>
+        battery.r === cell.r &&
+        battery.c === cell.c
+    );
+
+    const startDistance =
+      Math.abs(cell.r - startCell.r) +
+      Math.abs(cell.c - startCell.c);
+
+    if (
+      !duplicate &&
+      startDistance > 7 &&
+      MAP[cell.r][cell.c] === "."
+    ) {
+      batteryCells.push({ ...cell });
+    }
+  }
+
+  const collectibles = [];
+
+  function addKey(c, r) {
+    const group = new THREE.Group();
+
+    const material = new THREE.MeshStandardMaterial({
+      color: 0xc9a62d,
+      emissive: 0x7b5c00,
+      emissiveIntensity: 0.55,
+      roughness: 0.42,
+      metalness: 0.7
+    });
+
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(0.22, 0.065, 6, 12),
+      material
+    );
+
+    ring.rotation.y = Math.PI / 2;
+    group.add(ring);
+
+    const stem = new THREE.Mesh(
+      new THREE.BoxGeometry(0.48, 0.07, 0.07),
+      material
+    );
+
+    stem.position.x = 0.31;
+    group.add(stem);
+
+    const tooth = new THREE.Mesh(
+      new THREE.BoxGeometry(0.08, 0.16, 0.07),
+      material
+    );
+
+    tooth.position.set(0.5, -0.08, 0);
+    group.add(tooth);
+
+    const position = gridToWorld(c, r);
+
+    group.position.set(
+      position.x,
+      0.7,
+      position.z
+    );
+
+    scene.add(group);
+
+    collectibles.push({
+      type: "key",
+      object: group,
+      taken: false,
+      baseY: 0.7,
+      phase: rng() * 6.2
+    });
+  }
+
+  function addBattery(c, r) {
+    const group = new THREE.Group();
+
+    const material = new THREE.MeshStandardMaterial({
+      color: 0x3b5d3a,
+      emissive: 0x0d2b12,
+      emissiveIntensity: 0.55,
+      roughness: 0.65
+    });
+
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(0.34, 0.62, 0.25),
+      material
+    );
+
+    group.add(body);
+
+    const cap = new THREE.Mesh(
+      new THREE.BoxGeometry(0.17, 0.07, 0.12),
+      new THREE.MeshStandardMaterial({
+        color: 0xb4b09b,
+        metalness: 0.6,
+        roughness: 0.3
+      })
+    );
+
+    cap.position.y = 0.345;
+    group.add(cap);
+
+    const position = gridToWorld(c, r);
+
+    group.position.set(
+      position.x,
+      0.48,
+      position.z
+    );
+
+    scene.add(group);
+
+    collectibles.push({
+      type: "battery",
+      object: group,
+      taken: false,
+      baseY: 0.48,
+      phase: rng() * 6.2
+    });
+  }
+
+  keyCells.forEach((cell) => {
+    addKey(cell.c, cell.r);
+  });
+
+  batteryCells.forEach((cell) => {
+    addBattery(cell.c, cell.r);
+  });
+
+  const hatchPosition = gridToWorld(
+    exitCell.c,
+    exitCell.r
+  );
+
+  const hatchMaterial = new THREE.MeshStandardMaterial({
+    color: 0x24251e,
+    emissive: 0x5b0905,
+    emissiveIntensity: 0.75,
+    roughness: 0.8,
+    metalness: 0.25
+  });
+
+  const hatch = new THREE.Mesh(
+    new THREE.BoxGeometry(2.5, 0.12, 2.5),
+    hatchMaterial
+  );
+
+  hatch.position.set(
+    hatchPosition.x,
+    0.07,
+    hatchPosition.z
+  );
+
+  scene.add(hatch);
+
+  const hatchFrameMaterial =
+    new THREE.MeshStandardMaterial({
+      color: 0x0d0e0b,
+      metalness: 0.5,
+      roughness: 0.65
+    });
+
+  const hatchFramePieces = [
+    [0, -1.35, 2.9, 0.16],
+    [0, 1.35, 2.9, 0.16],
+    [-1.35, 0, 0.16, 2.9],
+    [1.35, 0, 0.16, 2.9]
+  ];
+
+  for (const [
+    offsetX,
+    offsetZ,
+    width,
+    depth
+  ] of hatchFramePieces) {
+    const framePiece = new THREE.Mesh(
+      new THREE.BoxGeometry(
+        width,
+        0.12,
+        depth
+      ),
+      hatchFrameMaterial
+    );
+
+    framePiece.position.set(
+      hatchPosition.x + offsetX,
+      0.12,
+      hatchPosition.z + offsetZ
+    );
+
+    scene.add(framePiece);
+  }
+
+  function makeBone(length, radius, material) {
+    const bone = new THREE.Mesh(
+      new THREE.CylinderGeometry(
+        radius,
+        radius * 0.75,
+        length,
+        5,
+        1,
+        true
+      ),
+      material
+    );
+
+    bone.position.y = -length / 2;
+    return bone;
+  }
+
+  function makeMonster() {
+    const group = new THREE.Group();
+
+    const blackWire = new THREE.MeshBasicMaterial({
+      color: 0x030303,
+      wireframe: true
+    });
+
+    const blackSolid = new THREE.MeshBasicMaterial({
+      color: 0x080808
+    });
+
+    const torso = new THREE.Mesh(
+      new THREE.CylinderGeometry(
+        0.18,
+        0.31,
+        1.55,
+        6,
+        4,
+        true
+      ),
+      blackWire
+    );
+
+    torso.position.y = 1.83;
+    group.add(torso);
+
+    const ribs = [];
+
+    for (let i = 0; i < 6; i++) {
+      const rib = new THREE.Mesh(
+        new THREE.TorusGeometry(
+          0.24 + i * 0.015,
+          0.018,
+          4,
+          8,
+          Math.PI * 1.5
+        ),
+        blackWire
+      );
+
+      rib.position.y = 1.35 + i * 0.2;
+      rib.rotation.set(Math.PI / 2, 0, 0.8);
+      group.add(rib);
+      ribs.push(rib);
+    }
+
+    const neck = makeBone(
+      0.46,
+      0.075,
+      blackSolid
+    );
+
+    neck.position.set(0, 2.7, 0);
+    group.add(neck);
+
+    const head = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(0.33, 1),
+      blackWire
+    );
+
+    head.scale.set(0.72, 1.5, 0.72);
+    head.position.y = 2.94;
+    group.add(head);
+
+    const eyeMaterial = new THREE.MeshBasicMaterial({
+      color: 0xff180f
+    });
+
+    for (const x of [-0.105, 0.105]) {
+      const eye = new THREE.Mesh(
+        new THREE.SphereGeometry(0.025, 5, 4),
+        eyeMaterial
+      );
+
+      eye.position.set(x, 3.02, -0.25);
+      group.add(eye);
+    }
+
+    const limbs = [];
+
+    function limb(
+      x,
+      y,
+      z,
+      upperLength,
+      lowerLength,
+      isArm,
+      side
+    ) {
+      const upperPivot = new THREE.Group();
+
+      upperPivot.position.set(x, y, z);
+      group.add(upperPivot);
+
+      const upper = makeBone(
+        upperLength,
+        isArm ? 0.065 : 0.085,
+        blackWire
+      );
+
+      upperPivot.add(upper);
+
+      const lowerPivot = new THREE.Group();
+      lowerPivot.position.y = -upperLength;
+      upperPivot.add(lowerPivot);
+
+      const lower = makeBone(
+        lowerLength,
+        isArm ? 0.045 : 0.065,
+        blackWire
+      );
+
+      lowerPivot.add(lower);
+
+      if (isArm) {
+        upperPivot.rotation.z = side * 0.14;
+        lowerPivot.rotation.z = side * 0.12;
+      }
+
+      limbs.push({
+        upperPivot,
+        lowerPivot,
+        arm: isArm,
+        side
+      });
+    }
+
+    limb(
+      -0.24,
+      2.48,
+      0,
+      1.28,
+      1.18,
+      true,
+      -1
+    );
+
+    limb(
+      0.24,
+      2.48,
+      0,
+      1.28,
+      1.18,
+      true,
+      1
+    );
+
+    limb(
+      -0.13,
+      1.23,
+      0,
+      0.78,
+      0.82,
+      false,
+      -1
+    );
+
+    limb(
+      0.13,
+      1.23,
+      0,
+      0.78,
+      0.82,
+      false,
+      1
+    );
+
+    group.userData = {
+      limbs,
+      head,
+      ribs
+    };
+
+    return group;
+  }
+
+  const monster = makeMonster();
+
+  const monsterStartPosition = gridToWorld(
+    monsterCell.c,
+    monsterCell.r
+  );
+
+  monster.position.set(
+    monsterStartPosition.x,
+    0,
+    monsterStartPosition.z
+  );
+
+  scene.add(monster);
+
+  const flashlight = new THREE.SpotLight(
+    0xfff2c2,
+    4.2,
+    20,
+    0.34,
+    0.62,
+    1.15
+  );
+
+  const flashlightTarget = new THREE.Object3D();
+
+  scene.add(flashlight);
+  scene.add(flashlightTarget);
+
+  flashlight.target = flashlightTarget;
+
+  const flashPosition = new THREE.Vector3();
+  const flashAim = new THREE.Vector3();
+
+  const player = {
+    pos: gridToWorld(startCell.c, startCell.r),
+    yaw: Math.PI,
+    pitch: 0,
+    health: 100,
+    stamina: 100,
+    battery: 100,
+    keys: 0,
+    flashlight: true,
+    moving: false,
+    sprinting: false,
+    sneaking: false,
+    dead: false,
+    escaped: false
+  };
+
+  player.pos.y = 0;
+
+  const keysDown = new Set();
+
+  let pointerLocked = false;
+  let started = false;
+  let toastTimer = 0;
+  let shake = 0;
+  let damagePulse = 0;
+  let bobPhase = 0;
+  let lastStepIndex = -1;
+  let elapsed = 0;
+  let interactionReady = false;
+
+  const tempPlayerFloorPosition =
+    new THREE.Vector3();
+
+  function canOccupy(x, z) {
+    const points = [
+      [x - PLAYER_R, z - PLAYER_R],
+      [x + PLAYER_R, z - PLAYER_R],
+      [x - PLAYER_R, z + PLAYER_R],
+      [x + PLAYER_R, z + PLAYER_R]
+    ];
+
+    return points.every(([pointX, pointZ]) => {
+      const grid = worldToGrid(pointX, pointZ);
+      return walkable(grid.r, grid.c);
+    });
+  }
+
+  function showToast(text, seconds = 1.5) {
+    ui.toast.textContent = text;
+    ui.toast.style.opacity = "1";
+    toastTimer = seconds;
+  }
+
+  function updateUI() {
+    const health = Math.max(0, player.health);
+    const stamina = Math.max(0, player.stamina);
+    const battery = Math.max(0, player.battery);
+
+    ui.healthFill.style.width = `${health}%`;
+    ui.staminaFill.style.width = `${stamina}%`;
+    ui.batteryFill.style.width = `${battery}%`;
+
+    ui.healthText.textContent = Math.ceil(health);
+    ui.staminaText.textContent = Math.ceil(stamina);
+    ui.batteryText.textContent = Math.ceil(battery);
+
+    ui.healthFill.classList.toggle(
+      "low",
+      health < 30
+    );
+
+    ui.batteryFill.classList.toggle(
+      "low",
+      battery < 20
+    );
+
+    ui.keyText.textContent =
+      `KEYS ${player.keys}/${keyCells.length}`;
+  }
+
+  function neighbors(node) {
+    const output = [];
+
+    const directions = [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1]
+    ];
+
+    for (const [rowOffset, columnOffset] of directions) {
+      const r = node.r + rowOffset;
+      const c = node.c + columnOffset;
+
+      if (walkable(r, c)) {
+        output.push({ r, c });
+      }
+    }
+
+    return output;
+  }
+
+  function findPath(start, end) {
+    const queue = [start];
+    const cameFrom = new Map([
+      [cellKey(start.r, start.c), null]
+    ]);
+
+    let queueIndex = 0;
+
+    while (queueIndex < queue.length) {
+      const node = queue[queueIndex++];
+
+      if (
+        node.r === end.r &&
+        node.c === end.c
+      ) {
+        break;
+      }
+
+      for (const neighbor of neighbors(node)) {
+        const key = cellKey(
+          neighbor.r,
+          neighbor.c
+        );
+
+        if (!cameFrom.has(key)) {
+          cameFrom.set(key, node);
+          queue.push(neighbor);
+        }
+      }
+    }
+
+    const endKey = cellKey(end.r, end.c);
+
+    if (!cameFrom.has(endKey)) {
+      return [];
+    }
+
+    const path = [];
+    let current = end;
+
+    while (
+      current &&
+      !(
+        current.r === start.r &&
+        current.c === start.c
+      )
+    ) {
+      path.push(current);
+
+      current = cameFrom.get(
+        cellKey(current.r, current.c)
+      );
+    }
+
+    return path.reverse();
+  }
+
+  function hasLineOfSight(start, end) {
+    const dx = end.x - start.x;
+    const dz = end.z - start.z;
+    const distance = Math.hypot(dx, dz);
+    const steps = Math.ceil(
+      distance / (CELL * 0.18)
+    );
+
+    for (let i = 1; i < steps; i++) {
+      const progress = i / steps;
+
+      const grid = worldToGrid(
+        start.x + dx * progress,
+        start.z + dz * progress
+      );
+
+      if (!walkable(grid.r, grid.c)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  const ai = {
+    state: "patrol",
+    path: [],
+    repath: 0,
+    alert: 0,
+    patrolTarget: null
+  };
+
+  function choosePatrol() {
+    const monsterGrid = worldToGrid(
+      monster.position.x,
+      monster.position.z
+    );
+
+    let target = null;
+
+    for (let attempts = 0; attempts < 20; attempts++) {
+      const candidate =
+        openCells[
+          Math.floor(rng() * openCells.length)
+        ];
+
+      const distance =
+        Math.abs(candidate.r - monsterGrid.r) +
+        Math.abs(candidate.c - monsterGrid.c);
+
+      if (distance > 10) {
+        target = candidate;
+        break;
+      }
+    }
+
+    target =
+      target ||
+      openCells[
+        Math.floor(rng() * openCells.length)
+      ];
+
+    ai.patrolTarget = { ...target };
+    ai.path = findPath(monsterGrid, target);
+  }
+
+  let audioContext = null;
+  let humGain = null;
+  let noiseBuffer = null;
+  let heartbeatTimer = 0;
+
+  function initAudio() {
+    if (audioContext) {
+      audioContext.resume();
+      return;
+    }
+
+    audioContext = new (
+      window.AudioContext ||
+      window.webkitAudioContext
+    )();
+
+    humGain = audioContext.createGain();
+    humGain.gain.value = 0.15;
+    humGain.connect(audioContext.destination);
+
+    const hum = audioContext.createOscillator();
+    hum.type = "sine";
+    hum.frequency.value = 60;
+
+    const humVolume = audioContext.createGain();
+    humVolume.gain.value = 0.19;
+
+    hum
+      .connect(humVolume)
+      .connect(humGain);
+
+    hum.start();
+
+    const buzz = audioContext.createOscillator();
+    buzz.type = "sawtooth";
+    buzz.frequency.value = 3480;
+
+    const buzzVolume = audioContext.createGain();
+    buzzVolume.gain.value = 0.012;
+
+    buzz
+      .connect(buzzVolume)
+      .connect(humGain);
+
+    buzz.start();
+
+    noiseBuffer = audioContext.createBuffer(
+      1,
+      audioContext.sampleRate * 2,
+      audioContext.sampleRate
+    );
+
+    const noiseData =
+      noiseBuffer.getChannelData(0);
+
+    for (
+      let i = 0;
+      i < noiseData.length;
+      i++
+    ) {
+      noiseData[i] =
+        Math.random() * 2 - 1;
+    }
+
+    const noiseSource =
+      audioContext.createBufferSource();
+
+    noiseSource.buffer = noiseBuffer;
+    noiseSource.loop = true;
+
+    const noiseFilter =
+      audioContext.createBiquadFilter();
+
+    noiseFilter.type = "bandpass";
+    noiseFilter.frequency.value = 780;
+    noiseFilter.Q.value = 0.8;
+
+    const noiseGain =
+      audioContext.createGain();
+
+    noiseGain.gain.value = 0.012;
+
+    noiseSource
+      .connect(noiseFilter)
+      .connect(noiseGain)
+      .connect(humGain);
+
+    noiseSource.start();
+  }
+
+  function noiseBurst(
+    duration = 0.12,
+    gain = 0.12,
+    frequency = 430
+  ) {
+    if (!audioContext || !noiseBuffer) {
+      return;
+    }
+
+    const source =
+      audioContext.createBufferSource();
+
+    source.buffer = noiseBuffer;
+
+    const filter =
+      audioContext.createBiquadFilter();
+
+    filter.type = "lowpass";
+    filter.frequency.value = frequency;
+
+    const volume =
+      audioContext.createGain();
+
+    const now = audioContext.currentTime;
+
+    volume.gain.setValueAtTime(
+      gain,
+      now
+    );
+
+    volume.gain.exponentialRampToValueAtTime(
+      0.001,
+      now + duration
+    );
+
+    source
+      .connect(filter)
+      .connect(volume)
+      .connect(audioContext.destination);
+
+    source.start(
+      now,
+      Math.random(),
+      duration
+    );
+
+    source.stop(
+      now + duration + 0.02
+    );
+  }
+
+  function footstep(mode) {
+    noiseBurst(
+      mode === "sprint"
+        ? 0.16
+        : mode === "sneak"
+          ? 0.055
+          : 0.095,
+      mode === "sprint"
+        ? 0.2
+        : mode === "sneak"
+          ? 0.035
+          : 0.095,
+      mode === "sprint"
+        ? 280
+        : 390
+    );
+  }
+
+  function thump(time, gain) {
+    if (!audioContext) {
+      return;
+    }
+
+    const oscillator =
+      audioContext.createOscillator();
+
+    const volume =
+      audioContext.createGain();
+
+    oscillator.type = "sine";
+
+    oscillator.frequency.setValueAtTime(
+      74,
+      time
+    );
+
+    oscillator.frequency.exponentialRampToValueAtTime(
+      43,
+      time + 0.12
+    );
+
+    volume.gain.setValueAtTime(
+      0.001,
+      time
+    );
+
+    volume.gain.exponentialRampToValueAtTime(
+      gain,
+      time + 0.012
+    );
+
+    volume.gain.exponentialRampToValueAtTime(
+      0.001,
+      time + 0.16
+    );
+
+    oscillator
+      .connect(volume)
+      .connect(audioContext.destination);
+
+    oscillator.start(time);
+    oscillator.stop(time + 0.18);
+  }
+
+  function heartbeat(distance, deltaTime) {
+    if (!audioContext) {
+      return;
+    }
+
+    const danger =
+      1 -
+      clamp(
+        (distance - 3) / 34,
+        0,
+        1
+      );
+
+    const interval =
+      THREE.MathUtils.lerp(
+        1.65,
+        0.42,
+        danger
+      );
+
+    heartbeatTimer -= deltaTime;
+
+    if (heartbeatTimer <= 0) {
+      const now =
+        audioContext.currentTime + 0.01;
+
+      const volume =
+        0.018 + danger * 0.22;
+
+      thump(now, volume);
+      thump(now + 0.13, volume * 0.72);
+
+      heartbeatTimer = interval;
+    }
+  }
+
+  function updatePlayer(
+    deltaTime,
+    time
+  ) {
+    if (
+      !pointerLocked ||
+      player.dead ||
+      player.escaped
+    ) {
+      player.moving = false;
+      return;
+    }
+
+    const forwardInput =
+      (
+        keysDown.has("KeyW") ||
+        keysDown.has("ArrowUp")
+          ? 1
+          : 0
+      ) -
+      (
+        keysDown.has("KeyS") ||
+        keysDown.has("ArrowDown")
+          ? 1
+          : 0
+      );
+
+    const sideInput =
+      (
+        keysDown.has("KeyD") ||
+        keysDown.has("ArrowRight")
+          ? 1
+          : 0
+      ) -
+      (
+        keysDown.has("KeyA") ||
+        keysDown.has("ArrowLeft")
+          ? 1
+          : 0
+      );
+
+    const inputLength =
+      Math.hypot(
+        forwardInput,
+        sideInput
+      );
+
+    player.moving =
+      inputLength > 0;
+
+    player.sneaking =
+      player.moving &&
+      (
+        keysDown.has("ControlLeft") ||
+        keysDown.has("ControlRight") ||
+        keysDown.has("KeyC")
+      );
+
+    player.sprinting =
+      player.moving &&
+      !player.sneaking &&
+      (
+        keysDown.has("ShiftLeft") ||
+        keysDown.has("ShiftRight")
+      ) &&
+      player.stamina > 1;
+
+    const movementSpeed =
+      player.sneaking
+        ? 1.12
+        : player.sprinting
+          ? 4.18
+          : 2.28;
+
+    if (player.sprinting) {
+      player.stamina = Math.max(
+        0,
+        player.stamina -
+          deltaTime * 24
+      );
+    } else {
+      player.stamina = Math.min(
+        100,
+        player.stamina +
+          deltaTime *
+            (
+              player.moving
+                ? 8
+                : 14
+            )
+      );
+    }
+
+    if (player.moving) {
+      const forward = new THREE.Vector3(
+        -Math.sin(player.yaw),
+        0,
+        -Math.cos(player.yaw)
+      );
+
+      const right = new THREE.Vector3(
+        Math.cos(player.yaw),
+        0,
+        -Math.sin(player.yaw)
+      );
+
+      const movement = forward
+        .multiplyScalar(forwardInput)
+        .add(
+          right.multiplyScalar(sideInput)
+        )
+        .normalize()
+        .multiplyScalar(
+          movementSpeed * deltaTime
+        );
+
+      const nextX =
+        player.pos.x + movement.x;
+
+      const nextZ =
+        player.pos.z + movement.z;
+
+      if (
+        canOccupy(
+          nextX,
+          player.pos.z
+        )
+      ) {
+        player.pos.x = nextX;
+      }
+
+      if (
+        canOccupy(
+          player.pos.x,
+          nextZ
+        )
+      ) {
+        player.pos.z = nextZ;
+      }
+    }
+
+    if (
+      player.flashlight &&
+      player.battery > 0
+    ) {
+      player.battery = Math.max(
+        0,
+        player.battery -
+          deltaTime * 0.48
+      );
+
+      if (player.battery <= 0) {
+        player.flashlight = false;
+
+        showToast(
+          "FLASHLIGHT BATTERY DEPLETED",
+          2
+        );
+      }
+    }
+
+    let cameraY = 0;
+    let cameraX = 0;
+    let cameraZ = 0;
+    let pitchBob = 0;
+    let roll = 0;
+
+    if (player.moving) {
+      const mode =
+        player.sprinting
+          ? "sprint"
+          : player.sneaking
+            ? "sneak"
+            : "walk";
+
+      const rate =
+        mode === "sprint"
+          ? 12.8
+          : mode === "sneak"
+            ? 5.1
+            : 8.4;
+
+      const amplitude =
+        mode === "sprint"
+          ? 0.095
+          : mode === "sneak"
+            ? 0.024
+            : 0.052;
+
+      bobPhase += deltaTime * rate;
+
+      cameraY =
+        Math.abs(
+          Math.sin(bobPhase)
+        ) * amplitude;
+
+      cameraX =
+        Math.sin(bobPhase * 0.5) *
+        amplitude *
+        0.5;
+
+      pitchBob =
+        Math.cos(bobPhase * 2) *
+        amplitude *
+        0.13;
+
+      roll =
+        Math.sin(bobPhase) *
+        amplitude *
+        0.24;
+
+      const stepIndex =
+        Math.floor(
+          bobPhase / Math.PI
+        );
+
+      if (
+        stepIndex !== lastStepIndex
+      ) {
+        lastStepIndex = stepIndex;
+        footstep(mode);
+      }
+    } else {
+      cameraY =
+        Math.sin(time * 0.92) *
+          0.018 +
+        Math.cos(time * 0.37) *
+          0.009;
+
+      cameraX =
+        Math.sin(time * 0.43) *
+        0.014;
+
+      cameraZ =
+        Math.cos(time * 0.31) *
+        0.009;
+
+      pitchBob =
+        Math.sin(time * 0.54) *
+        0.005;
+
+      roll =
+        Math.cos(time * 0.47) *
+        0.004;
+    }
+
+    if (shake > 0) {
+      cameraX +=
+        (rng() - 0.5) * shake;
+
+      cameraY +=
+        (rng() - 0.5) * shake;
+
+      cameraZ +=
+        (rng() - 0.5) * shake;
+
+      roll +=
+        (rng() - 0.5) *
+        shake *
+        0.5;
+
+      shake = Math.max(
+        0,
+        shake - deltaTime * 0.7
+      );
+    }
+
+    const rightDirection =
+      new THREE.Vector3(
+        Math.cos(player.yaw),
+        0,
+        -Math.sin(player.yaw)
+      );
+
+    camera.position.set(
+      player.pos.x +
+        rightDirection.x * cameraX,
+      EYE_H + cameraY,
+      player.pos.z +
+        rightDirection.z * cameraX +
+        cameraZ
+    );
+
+    camera.rotation.set(
+      player.pitch + pitchBob,
+      player.yaw,
+      roll,
+      "YXZ"
+    );
+  }
+
+  function updateFlashlight(deltaTime) {
+    const desiredPosition =
+      camera.position
+        .clone()
+        .add(
+          new THREE.Vector3(
+            0,
+            -0.08,
+            0
+          )
+        );
+
+    const forward =
+      new THREE.Vector3(0, 0, -1)
+        .applyEuler(camera.rotation);
+
+    const desiredAim =
+      desiredPosition
+        .clone()
+        .add(
+          forward.multiplyScalar(12)
+        );
+
+    const positionLerp =
+      1 -
+      Math.pow(
+        0.0008,
+        deltaTime
+      );
+
+    const aimLerp =
+      1 -
+      Math.pow(
+        0.004,
+        deltaTime
+      );
+
+    flashPosition.lerp(
+      desiredPosition,
+      positionLerp
+    );
+
+    flashAim.lerp(
+      desiredAim,
+      aimLerp
+    );
+
+    flashlight.position.copy(
+      flashPosition
+    );
+
+    flashlightTarget.position.copy(
+      flashAim
+    );
+
+    const enabled =
+      player.flashlight &&
+      player.battery > 0 &&
+      !player.dead;
+
+    flashlight.visible = enabled;
+
+    if (enabled) {
+      const lowBattery =
+        player.battery < 18;
+
+      flashlight.intensity =
+        lowBattery &&
+        rng() < 0.035
+          ? 0.2
+          : 4.1 *
+            (
+              0.72 +
+              player.battery / 360
+            );
+    }
+  }
+
+  function updateCollectibles(
+    deltaTime,
+    time
+  ) {
+    for (const item of collectibles) {
+      if (item.taken) {
+        continue;
+      }
+
+      item.object.rotation.y +=
+        deltaTime * 0.9;
+
+      item.object.position.y =
+        item.baseY +
+        Math.sin(
+          time * 1.8 +
+          item.phase
+        ) *
+          0.07;
+
+      const dx =
+        player.pos.x -
+        item.object.position.x;
+
+      const dz =
+        player.pos.z -
+        item.object.position.z;
+
+      const distance =
+        Math.hypot(dx, dz);
+
+      if (distance < 0.82) {
+        item.taken = true;
+        scene.remove(item.object);
+
+        if (item.type === "key") {
+          player.keys++;
+
+          showToast(
+            `KEY RECOVERED — ${player.keys}/${keyCells.length}`,
+            1.8
+          );
+
+          if (
+            player.keys ===
+            keyCells.length
+          ) {
+            hatchMaterial.emissive.setHex(
+              0x0f5a20
+            );
+
+            showToast(
+              "ALL KEYS FOUND — LOCATE THE FLOOR HATCH",
+              2.6
+            );
+          }
+        } else {
+          player.battery = Math.min(
+            100,
+            player.battery + 38
+          );
+
+          showToast(
+            "BATTERY RECOVERED +38%",
+            1.5
+          );
+
+          noiseBurst(
+            0.08,
+            0.07,
+            900
+          );
+        }
+      }
+    }
+  }
+
+  function updateMonster(
+    deltaTime,
+    time
+  ) {
+    tempPlayerFloorPosition.set(
+      player.pos.x,
+      0,
+      player.pos.z
+    );
+
+    const distance =
+      monster.position.distanceTo(
+        tempPlayerFloorPosition
+      );
+
+    const canSee =
+      distance < 30 &&
+      hasLineOfSight(
+        monster.position,
+        player.pos
+      );
+
+    const canHear =
+      player.sprinting &&
+      distance < 27;
+
+    if (canSee || canHear) {
+      ai.state = "chase";
+      ai.alert = 5.5;
+    } else if (
+      ai.state === "chase"
+    ) {
+      ai.alert -= deltaTime;
+
+      if (ai.alert <= 0) {
+        ai.state = "patrol";
+        ai.path = [];
+      }
+    }
+
+    ai.repath -= deltaTime;
+
+    const monsterGrid =
+      worldToGrid(
+        monster.position.x,
+        monster.position.z
+      );
+
+    if (ai.state === "chase") {
+      if (ai.repath <= 0) {
+        const playerGrid =
+          worldToGrid(
+            player.pos.x,
+            player.pos.z
+          );
+
+        ai.path = findPath(
+          monsterGrid,
+          playerGrid
+        );
+
+        ai.repath = 0.3;
+      }
+    } else if (
+      ai.path.length === 0 ||
+      ai.repath <= 0
+    ) {
+      choosePatrol();
+      ai.repath = 3.5;
+    }
+
+    const target = ai.path[0];
+
+    if (target) {
+      const targetPosition =
+        gridToWorld(
+          target.c,
+          target.r
+        );
+
+      const dx =
+        targetPosition.x -
+        monster.position.x;
+
+      const dz =
+        targetPosition.z -
+        monster.position.z;
+
+      const targetDistance =
+        Math.hypot(dx, dz);
+
+      if (targetDistance < 0.16) {
+        ai.path.shift();
+      } else {
+        const speed =
+          ai.state === "chase"
+            ? 2.72
+            : 1.08;
+
+        monster.position.x +=
+          (dx / targetDistance) *
+          speed *
+          deltaTime;
+
+        monster.position.z +=
+          (dz / targetDistance) *
+          speed *
+          deltaTime;
+
+        monster.rotation.y =
+          Math.atan2(dx, dz);
+      }
+    }
+
+    const monsterData =
+      monster.userData;
+
+    monsterData.head.rotation.y =
+      Math.sin(time * 3.1) *
+        0.34 +
+      (rng() - 0.5) *
+        0.04;
+
+    monster.scale.y =
+      1 +
+      Math.sin(time * 4.7) *
+        0.025;
+
+    monsterData.limbs.forEach(
+      (limb, index) => {
+        const stride =
+          Math.sin(
+            time *
+              (
+                ai.state === "chase"
+                  ? 7.8
+                  : 3.4
+              ) +
+            index * Math.PI
+          );
+
+        limb.upperPivot.rotation.x =
+          (
+            limb.arm
+              ? -0.08
+              : 0.12
+          ) +
+          stride *
+            (
+              limb.arm
+                ? 0.46
+                : 0.3
+            );
+
+        limb.lowerPivot.rotation.x =
+          (
+            limb.arm
+              ? -0.18
+              : 0.18
+          ) -
+          stride *
+            (
+              limb.arm
+                ? 0.26
+                : 0.2
+            );
+
+        limb.upperPivot.rotation.z +=
+          (rng() - 0.5) *
+          0.006;
+      }
+    );
+
+    monsterData.ribs.forEach(
+      (rib, index) => {
+        rib.scale.setScalar(
+          1 +
+          Math.sin(
+            time * 6 +
+            index
+          ) *
+            0.025
+        );
+      }
+    );
+
+    ui.stateText.textContent =
+      ai.state === "chase"
+        ? "SIGNAL: MOVEMENT DETECTED"
+        : "SIGNAL: SEARCHING";
+
+    ui.stateText.style.color =
+      ai.state === "chase"
+        ? "#ff5148"
+        : "";
+
+    heartbeat(
+      distance,
+      deltaTime
+    );
+
+    if (
+      distance < 1.05 &&
+      !player.dead
+    ) {
+      player.health -=
+        deltaTime * 34;
+
+      shake = Math.max(
+        shake,
+        0.16
+      );
+
+      damagePulse = 0.8;
+
+      noiseBurst(
+        0.06,
+        0.045,
+        240
+      );
+
+      if (player.health <= 0) {
+        endGame(false);
+      }
+    }
+  }
+
+  function updateHatch() {
+    const distance =
+      Math.hypot(
+        player.pos.x -
+          hatchPosition.x,
+        player.pos.z -
+          hatchPosition.z
+      );
+
+    interactionReady =
+      distance < 1.75;
+
+    if (interactionReady) {
+      ui.prompt.style.opacity = "1";
+
+      if (
+        player.keys ===
+        keyCells.length
+      ) {
+        ui.prompt.textContent =
+          "[ E ] UNLOCK FLOOR HATCH";
+      } else {
+        const remaining =
+          keyCells.length -
+          player.keys;
+
+        ui.prompt.textContent =
+          `LOCKED — ${remaining} KEY${remaining === 1 ? "" : "S"} MISSING`;
+      }
+    } else {
+      ui.prompt.style.opacity = "0";
+    }
+  }
+
+  function interact() {
+    if (
+      !interactionReady ||
+      player.dead
+    ) {
+      return;
+    }
+
+    if (
+      player.keys ===
+      keyCells.length
+    ) {
+      endGame(true);
+    } else {
+      showToast(
+        "THE LOCK WILL NOT TURN",
+        1.2
+      );
+    }
+  }
+
+  function endGame(escaped) {
+    player.escaped = escaped;
+    player.dead = !escaped;
+    pointerLocked = false;
+
+    if (document.pointerLockElement) {
+      document.exitPointerLock();
+    }
+
+    ui.ending.className =
+      escaped
+        ? ""
+        : "gameover";
+
+    ui.ending.classList.remove(
+      "hidden"
+    );
+
+    ui.endTitle.textContent =
+      escaped
+        ? "EXIT FOUND"
+        : "GAME OVER";
+
+    ui.endText.textContent =
+      escaped
+        ? "You opened the hatch. The corridor below was already recording you."
+        : "The camera continued recording for 03:17 after your signal stopped.";
+
+    ui.noise.style.opacity =
+      escaped
+        ? "0.22"
+        : "0.62";
+
+    noiseBurst(
+      1.8,
+      0.35,
+      1700
+    );
+  }
+
+  function updateEffects(
+    deltaTime,
+    time
+  ) {
+    for (const entry of flickerLights) {
+      const glitch =
+        rng() < 0.006
+          ? 0.05
+          : 1;
+
+      entry.light.intensity =
+        entry.base *
+        (
+          0.94 +
+          Math.sin(
+            time * 7 +
+            entry.phase
+          ) *
+            0.04
+        ) *
+        glitch;
+    }
+
+    if (toastTimer > 0) {
+      toastTimer -= deltaTime;
+
+      if (toastTimer <= 0) {
+        ui.toast.style.opacity = "0";
+      }
+    }
+
+    damagePulse = Math.max(
+      0,
+      damagePulse -
+        deltaTime * 1.9
+    );
+
+    ui.damage.style.opacity =
+      String(
+        damagePulse * 0.68
+      );
+
+    updateUI();
+  }
+
+  function updateTimestamp() {
+    const date = new Date();
+
+    $("dateText").textContent =
+      `${String(date.getMonth() + 1).padStart(2, "0")}/` +
+      `${String(date.getDate()).padStart(2, "0")}/` +
+      `${date.getFullYear()}`;
+
+    $("timeText").textContent =
+      `${String(date.getHours()).padStart(2, "0")}:` +
+      `${String(date.getMinutes()).padStart(2, "0")}:` +
+      `${String(date.getSeconds()).padStart(2, "0")}`;
+  }
+
+  setInterval(
+    updateTimestamp,
+    250
+  );
+
+  updateTimestamp();
+
+  ui.enter.addEventListener(
+    "click",
+    () => {
+      started = true;
+      initAudio();
+
+      renderer.domElement.requestPointerLock();
+    }
+  );
+
+  document.addEventListener(
+    "pointerlockchange",
+    () => {
+      pointerLocked =
+        document.pointerLockElement ===
+        renderer.domElement;
+
+      if (pointerLocked) {
+        ui.start.classList.add(
+          "hidden"
+        );
+
+        initAudio();
+      } else if (
+        started &&
+        !player.dead &&
+        !player.escaped
+      ) {
+        ui.enter.textContent =
+          "RESUME TAPE";
+
+        ui.start.classList.remove(
+          "hidden"
+        );
+
+        keysDown.clear();
+      }
+    }
+  );
+
+  document.addEventListener(
+    "mousemove",
+    (event) => {
+      if (
+        !pointerLocked ||
+        player.dead
+      ) {
+        return;
+      }
+
+      player.yaw -=
+        event.movementX *
+        0.00235;
+
+      player.pitch = clamp(
+        player.pitch -
+          event.movementY *
+            0.00215,
+        -1.42,
+        1.42
+      );
+    }
+  );
+
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      if (
+        [
+          "ArrowUp",
+          "ArrowDown",
+          "ArrowLeft",
+          "ArrowRight",
+          "Space"
+        ].includes(event.code)
+      ) {
+        event.preventDefault();
+      }
+
+      keysDown.add(event.code);
+
+      if (
+        event.code === "KeyF" &&
+        !event.repeat &&
+        pointerLocked
+      ) {
+        if (player.battery > 0) {
+          player.flashlight =
+            !player.flashlight;
+
+          showToast(
+            player.flashlight
+              ? "FLASHLIGHT ON"
+              : "FLASHLIGHT OFF",
+            0.65
+          );
+        }
+      }
+
+      if (
+        event.code === "KeyE" &&
+        !event.repeat &&
+        pointerLocked
+      ) {
+        interact();
+      }
+    }
+  );
+
+  document.addEventListener(
+    "keyup",
+    (event) => {
+      keysDown.delete(event.code);
+    }
+  );
+
+  window.addEventListener(
+    "blur",
+    () => {
+      keysDown.clear();
+    }
+  );
+
+  flashPosition.copy(
+    camera.position
+  );
+
+  flashAim
+    .copy(camera.position)
+    .add(
+      new THREE.Vector3(
+        0,
+        0,
+        -10
+      )
+    );
+
+  choosePatrol();
+  updateUI();
+
+  let lastTime = performance.now();
+
+  function gameLoop(now) {
+    requestAnimationFrame(gameLoop);
+
+    const deltaTime = Math.min(
+      0.05,
+      (now - lastTime) / 1000 ||
+        0.016
+    );
+
+    lastTime = now;
+    elapsed += deltaTime;
+
+    updatePlayer(
+      deltaTime,
+      elapsed
+    );
+
+    updateFlashlight(deltaTime);
+
+    if (
+      started &&
+      !player.dead &&
+      !player.escaped
+    ) {
+      updateCollectibles(
+        deltaTime,
+        elapsed
+      );
+
+      updateMonster(
+        deltaTime,
+        elapsed
+      );
+
+      updateHatch();
+    }
+
+    updateEffects(
+      deltaTime,
+      elapsed
+    );
+
+    renderer.render(
+      scene,
+      camera
+    );
+  }
+
+  requestAnimationFrame(gameLoop);
+})();
+</script>
+
+</body>
+</html>
