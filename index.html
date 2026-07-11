@@ -394,6 +394,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/GLTFLoader.js"></script>
 
 <script>
 (() => {
@@ -1010,9 +1011,48 @@
     return bone;
   }
 
-  function makeMonster() {
+  let monsterMixer = null;
+
+  function makeMonsterFallback() {
     const group = new THREE.Group();
 
+    const material = new THREE.MeshStandardMaterial({
+      color: 0x171010,
+      emissive: 0x080000,
+      emissiveIntensity: 0.28,
+      roughness: 0.94
+    });
+
+    const torso = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.24, 0.38, 1.7, 7, 3, true),
+      material
+    );
+
+    torso.position.y = 1.75;
+    group.add(torso);
+
+    const head = new THREE.Mesh(
+      new THREE.SphereGeometry(0.32, 8, 6),
+      material
+    );
+
+    head.scale.set(0.72, 1.25, 0.72);
+    head.position.y = 2.88;
+    group.add(head);
+
+    for (const side of [-1, 1]) {
+      const armPivot = new THREE.Group();
+      armPivot.position.set(side * 0.36, 2.36, 0);
+      armPivot.rotation.z = side * 0.8;
+      group.add(armPivot);
+
+      const arm = makeBone(1.55, 0.07, material);
+      armPivot.add(arm);
+
+      const forearmPivot = new THREE.Group();
+      forearmPivot.position.y = -1.55;
+      forearmPivot.rotation.z = -side * 0.42;
+      armPivot.add(forearmPivot);
     const skin = new THREE.MeshStandardMaterial({
       color: 0x766f6b,
       emissive: 0x1a0504,
@@ -1117,8 +1157,31 @@
       group.add(eye);
     }
 
-    const limbs = [];
+      forearmPivot.add(makeBone(1.35, 0.05, material));
 
+      const legPivot = new THREE.Group();
+      legPivot.position.set(side * 0.2, 1.0, 0);
+      legPivot.rotation.z = side * 0.17;
+      group.add(legPivot);
+      legPivot.add(makeBone(1.35, 0.085, material));
+    }
+
+    group.userData = {
+      fallback: true,
+      limbs: [],
+      ribs: [],
+      head
+    };
+
+    return group;
+  }
+
+  function normalizeMonsterModel(model) {
+    const box = new THREE.Box3().setFromObject(model);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    const maxAxis = Math.max(size.x, size.y, size.z) || 1;
+    const scale = 3.35 / maxAxis;
     function addClaws(hand, side) {
       for (let i = 0; i < 3; i++) {
         const claw = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.34, 5), bone);
@@ -1139,10 +1202,74 @@
       upper.scale.z = isArm ? 0.62 : 0.78;
       upperPivot.add(upper);
 
-      const lowerPivot = new THREE.Group();
-      lowerPivot.position.y = -upperLength;
-      upperPivot.add(lowerPivot);
+    model.position.sub(center);
+    model.scale.multiplyScalar(scale);
 
+    const normalizedBox = new THREE.Box3().setFromObject(model);
+    model.position.y -= normalizedBox.min.y;
+  }
+
+  function makeMonster() {
+    const group = new THREE.Group();
+    const fallback = makeMonsterFallback();
+
+    group.add(fallback);
+    group.userData = fallback.userData;
+
+    if (!THREE.GLTFLoader) {
+      console.warn("GLTFLoader unavailable; using fallback monster.");
+      return group;
+    }
+
+    const loader = new THREE.GLTFLoader();
+
+    loader.load(
+      "bacteria_lifeform_backrooms.glb",
+      (gltf) => {
+        const model = gltf.scene;
+
+        normalizeMonsterModel(model);
+
+        model.traverse((child) => {
+          if (!child.isMesh) {
+            return;
+          }
+
+          child.frustumCulled = false;
+
+          if (child.material) {
+            child.material.side = THREE.DoubleSide;
+            child.material.roughness = Math.max(
+              child.material.roughness ?? 0.75,
+              0.75
+            );
+          }
+        });
+
+        group.clear();
+        group.add(model);
+        group.userData = {
+          glbModel: model,
+          limbs: [],
+          ribs: [],
+          head: model
+        };
+
+        if (gltf.animations.length > 0) {
+          monsterMixer = new THREE.AnimationMixer(model);
+
+          for (const clip of gltf.animations) {
+            monsterMixer.clipAction(clip).play();
+          }
+        }
+      },
+      undefined,
+      () => {
+        console.warn(
+          "bacteria_lifeform_backrooms.glb could not be loaded; using fallback monster."
+        );
+      }
+    );
       const lower = makeBone(lowerLength, isArm ? 0.058 : 0.075, darkSkin);
       lower.scale.x = isArm ? 0.52 : 0.68;
       lower.scale.z = isArm ? 0.52 : 0.68;
@@ -2235,6 +2362,10 @@
         monster.rotation.y =
           Math.atan2(dx, dz);
       }
+    }
+
+    if (monsterMixer) {
+      monsterMixer.update(deltaTime);
     }
 
     const monsterData =
