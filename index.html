@@ -1054,150 +1054,6 @@
       forearmPivot.rotation.z = -side * 0.42;
       armPivot.add(forearmPivot);
 
-  function makeMonsterFallback() {
-    const group = new THREE.Group();
-
-    const material = new THREE.MeshStandardMaterial({
-      color: 0x171010,
-      emissive: 0x080000,
-      emissiveIntensity: 0.28,
-      roughness: 0.94
-    });
-
-    const torso = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.24, 0.38, 1.7, 7, 3, true),
-      material
-    );
-
-    torso.position.y = 1.75;
-    group.add(torso);
-
-    const head = new THREE.Mesh(
-      new THREE.SphereGeometry(0.32, 8, 6),
-      material
-    );
-
-    head.scale.set(0.72, 1.25, 0.72);
-    head.position.y = 2.88;
-    group.add(head);
-
-    for (const side of [-1, 1]) {
-      const armPivot = new THREE.Group();
-      armPivot.position.set(side * 0.36, 2.36, 0);
-      armPivot.rotation.z = side * 0.8;
-      group.add(armPivot);
-
-      const arm = makeBone(1.55, 0.07, material);
-      armPivot.add(arm);
-
-      const forearmPivot = new THREE.Group();
-      forearmPivot.position.y = -1.55;
-      forearmPivot.rotation.z = -side * 0.42;
-      armPivot.add(forearmPivot);
-    const skin = new THREE.MeshStandardMaterial({
-      color: 0x766f6b,
-      emissive: 0x1a0504,
-      emissiveIntensity: 0.12,
-      roughness: 0.92,
-      metalness: 0.02
-    });
-
-    const darkSkin = new THREE.MeshStandardMaterial({
-      color: 0x2b1717,
-      emissive: 0x120000,
-      emissiveIntensity: 0.18,
-      roughness: 0.96
-    });
-
-    const wound = new THREE.MeshStandardMaterial({
-      color: 0x210303,
-      emissive: 0x3d0504,
-      emissiveIntensity: 0.5,
-      roughness: 0.8
-    });
-
-    const bone = new THREE.MeshStandardMaterial({
-      color: 0xb9b2aa,
-      emissive: 0x100807,
-      emissiveIntensity: 0.08,
-      roughness: 0.8
-    });
-
-    const torso = new THREE.Mesh(
-      new THREE.SphereGeometry(0.58, 10, 8),
-      skin
-    );
-
-    torso.scale.set(0.74, 1.38, 0.42);
-    torso.position.y = 1.82;
-    group.add(torso);
-
-    const chestCavity = new THREE.Mesh(
-      new THREE.ConeGeometry(0.28, 0.72, 5, 1, true),
-      wound
-    );
-
-    chestCavity.position.set(0, 2.05, -0.34);
-    chestCavity.rotation.x = Math.PI;
-    group.add(chestCavity);
-
-    const ribs = [];
-
-    for (let i = 0; i < 7; i++) {
-      const rib = new THREE.Mesh(
-        new THREE.TorusGeometry(0.26 + i * 0.025, 0.014, 5, 10, Math.PI * 1.18),
-        bone
-      );
-
-      rib.position.y = 1.43 + i * 0.15;
-      rib.position.z = -0.24;
-      rib.rotation.set(Math.PI / 2, 0, 0.55 + i * 0.03);
-      rib.scale.x = 1.35;
-      group.add(rib);
-      ribs.push(rib);
-    }
-
-    const abdomen = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.22, 0.31, 0.72, 7, 2, true),
-      darkSkin
-    );
-
-    abdomen.position.y = 1.03;
-    abdomen.scale.z = 0.55;
-    group.add(abdomen);
-
-    const neck = makeBone(0.35, 0.095, darkSkin);
-    neck.position.set(0, 2.72, 0);
-    group.add(neck);
-
-    const head = new THREE.Mesh(
-      new THREE.SphereGeometry(0.38, 10, 8),
-      skin
-    );
-
-    head.scale.set(0.86, 1.18, 0.78);
-    head.position.y = 2.98;
-    head.position.z = -0.03;
-    group.add(head);
-
-    const mouth = new THREE.Mesh(
-      new THREE.ConeGeometry(0.22, 0.42, 6, 1, true),
-      wound
-    );
-
-    mouth.position.set(0, 2.84, -0.34);
-    mouth.rotation.x = Math.PI / 2;
-    mouth.scale.y = 1.45;
-    group.add(mouth);
-
-    const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0xff2417 });
-
-    for (const x of [-0.105, 0.105]) {
-      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.024, 6, 4), eyeMaterial);
-      eye.position.set(x, 3.07, -0.31);
-      group.add(eye);
-    }
-
       forearmPivot.add(makeBone(1.35, 0.05, material));
 
       const legPivot = new THREE.Group();
@@ -1223,42 +1079,6 @@
     const center = box.getCenter(new THREE.Vector3());
     const maxAxis = Math.max(size.x, size.y, size.z) || 1;
     const scale = 3.35 / maxAxis;
-
-    group.userData = {
-      fallback: true,
-      limbs: [],
-      ribs: [],
-      head
-    };
-
-    return group;
-  }
-
-  function normalizeMonsterModel(model) {
-    const box = new THREE.Box3().setFromObject(model);
-    const size = box.getSize(new THREE.Vector3());
-    const center = box.getCenter(new THREE.Vector3());
-    const maxAxis = Math.max(size.x, size.y, size.z) || 1;
-    const scale = 3.35 / maxAxis;
-    function addClaws(hand, side) {
-      for (let i = 0; i < 3; i++) {
-        const claw = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.34, 5), bone);
-        claw.position.set(side * (0.06 + i * 0.045), -0.28 - i * 0.025, -0.04);
-        claw.rotation.z = side * (0.28 + i * 0.14);
-        claw.rotation.x = 0.42;
-        hand.add(claw);
-      }
-    }
-
-    function limb(x, y, z, upperLength, lowerLength, isArm, side) {
-      const upperPivot = new THREE.Group();
-      upperPivot.position.set(x, y, z);
-      group.add(upperPivot);
-
-      const upper = makeBone(upperLength, isArm ? 0.085 : 0.105, isArm ? darkSkin : skin);
-      upper.scale.x = isArm ? 0.62 : 0.78;
-      upper.scale.z = isArm ? 0.62 : 0.78;
-      upperPivot.add(upper);
 
     model.position.sub(center);
     model.scale.multiplyScalar(scale);
@@ -1329,72 +1149,6 @@
       }
     );
 
-          child.frustumCulled = false;
-
-          if (child.material) {
-            child.material.side = THREE.DoubleSide;
-            child.material.roughness = Math.max(
-              child.material.roughness ?? 0.75,
-              0.75
-            );
-          }
-        });
-
-        group.clear();
-        group.add(model);
-        group.userData = {
-          glbModel: model,
-          limbs: [],
-          ribs: [],
-          head: model
-        };
-
-        if (gltf.animations.length > 0) {
-          monsterMixer = new THREE.AnimationMixer(model);
-
-          for (const clip of gltf.animations) {
-            monsterMixer.clipAction(clip).play();
-          }
-        }
-      },
-      undefined,
-      () => {
-        console.warn(
-          "bacteria_lifeform_backrooms.glb could not be loaded; using fallback monster."
-        );
-      }
-    );
-      const lower = makeBone(lowerLength, isArm ? 0.058 : 0.075, darkSkin);
-      lower.scale.x = isArm ? 0.52 : 0.68;
-      lower.scale.z = isArm ? 0.52 : 0.68;
-      lowerPivot.add(lower);
-
-      if (isArm) {
-        upperPivot.rotation.z = side * 0.78;
-        upperPivot.rotation.x = -0.22;
-        lowerPivot.rotation.z = -side * 0.48;
-
-        const hand = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 4), darkSkin);
-        hand.scale.set(0.72, 1.15, 0.55);
-        hand.position.y = -lowerLength - 0.08;
-        lowerPivot.add(hand);
-        addClaws(hand, side);
-      } else {
-        upperPivot.rotation.z = side * 0.15;
-        lowerPivot.rotation.z = -side * 0.12;
-      }
-
-      limbs.push({ upperPivot, lowerPivot, arm: isArm, side });
-    }
-
-    limb(-0.46, 2.43, 0, 1.58, 1.42, true, -1);
-    limb(0.46, 2.43, 0, 1.58, 1.42, true, 1);
-    limb(-0.22, 1.15, 0, 1.18, 1.12, false, -1);
-    limb(0.22, 1.15, 0, 1.18, 1.12, false, 1);
-
-    group.scale.set(1.08, 1.12, 1.08);
-    group.userData = { limbs, head, ribs };
-
     return group;
   }
 
@@ -1453,6 +1207,7 @@
   const keysDown = new Set();
 
   let pointerLocked = false;
+  let manualControls = false;
   let started = false;
   let toastTimer = 0;
   let shake = 0;
@@ -2771,9 +2526,16 @@
 
   updateTimestamp();
 
+  function enterGameplayWithoutPointerLock() {
+    manualControls = true;
+    pointerLocked = true;
+    ui.start.classList.add("hidden");
+  }
+
   function startTape() {
     started = true;
     initAudio();
+    enterGameplayWithoutPointerLock();
 
     const lockPromise =
       renderer.domElement.requestPointerLock?.();
@@ -2783,14 +2545,8 @@
       typeof lockPromise.catch === "function"
     ) {
       lockPromise.catch(() => {
-        pointerLocked = true;
-        ui.start.classList.add("hidden");
+        enterGameplayWithoutPointerLock();
       });
-    } else if (
-      !document.pointerLockElement
-    ) {
-      pointerLocked = true;
-      ui.start.classList.add("hidden");
     }
   }
 
@@ -2802,9 +2558,16 @@
   document.addEventListener(
     "pointerlockchange",
     () => {
-      pointerLocked =
+      const hasPointerLock =
         document.pointerLockElement ===
         renderer.domElement;
+
+      if (hasPointerLock) {
+        manualControls = false;
+      }
+
+      pointerLocked =
+        hasPointerLock || manualControls;
 
       if (pointerLocked) {
         ui.start.classList.add(
