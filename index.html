@@ -1053,6 +1053,47 @@
       forearmPivot.position.y = -1.55;
       forearmPivot.rotation.z = -side * 0.42;
       armPivot.add(forearmPivot);
+
+  function makeMonsterFallback() {
+    const group = new THREE.Group();
+
+    const material = new THREE.MeshStandardMaterial({
+      color: 0x171010,
+      emissive: 0x080000,
+      emissiveIntensity: 0.28,
+      roughness: 0.94
+    });
+
+    const torso = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.24, 0.38, 1.7, 7, 3, true),
+      material
+    );
+
+    torso.position.y = 1.75;
+    group.add(torso);
+
+    const head = new THREE.Mesh(
+      new THREE.SphereGeometry(0.32, 8, 6),
+      material
+    );
+
+    head.scale.set(0.72, 1.25, 0.72);
+    head.position.y = 2.88;
+    group.add(head);
+
+    for (const side of [-1, 1]) {
+      const armPivot = new THREE.Group();
+      armPivot.position.set(side * 0.36, 2.36, 0);
+      armPivot.rotation.z = side * 0.8;
+      group.add(armPivot);
+
+      const arm = makeBone(1.55, 0.07, material);
+      armPivot.add(arm);
+
+      const forearmPivot = new THREE.Group();
+      forearmPivot.position.y = -1.55;
+      forearmPivot.rotation.z = -side * 0.42;
+      armPivot.add(forearmPivot);
     const skin = new THREE.MeshStandardMaterial({
       color: 0x766f6b,
       emissive: 0x1a0504,
@@ -1182,6 +1223,23 @@
     const center = box.getCenter(new THREE.Vector3());
     const maxAxis = Math.max(size.x, size.y, size.z) || 1;
     const scale = 3.35 / maxAxis;
+
+    group.userData = {
+      fallback: true,
+      limbs: [],
+      ribs: [],
+      head
+    };
+
+    return group;
+  }
+
+  function normalizeMonsterModel(model) {
+    const box = new THREE.Box3().setFromObject(model);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    const maxAxis = Math.max(size.x, size.y, size.z) || 1;
+    const scale = 3.35 / maxAxis;
     function addClaws(hand, side) {
       for (let i = 0; i < 3; i++) {
         const claw = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.34, 5), bone);
@@ -1234,6 +1292,42 @@
           if (!child.isMesh) {
             return;
           }
+
+          child.frustumCulled = false;
+
+          if (child.material) {
+            child.material.side = THREE.DoubleSide;
+            child.material.roughness = Math.max(
+              child.material.roughness ?? 0.75,
+              0.75
+            );
+          }
+        });
+
+        group.clear();
+        group.add(model);
+        group.userData = {
+          glbModel: model,
+          limbs: [],
+          ribs: [],
+          head: model
+        };
+
+        if (gltf.animations.length > 0) {
+          monsterMixer = new THREE.AnimationMixer(model);
+
+          for (const clip of gltf.animations) {
+            monsterMixer.clipAction(clip).play();
+          }
+        }
+      },
+      undefined,
+      () => {
+        console.warn(
+          "bacteria_lifeform_backrooms.glb could not be loaded; using fallback monster."
+        );
+      }
+    );
 
           child.frustumCulled = false;
 
@@ -2677,14 +2771,32 @@
 
   updateTimestamp();
 
+  function startTape() {
+    started = true;
+    initAudio();
+
+    const lockPromise =
+      renderer.domElement.requestPointerLock?.();
+
+    if (
+      lockPromise &&
+      typeof lockPromise.catch === "function"
+    ) {
+      lockPromise.catch(() => {
+        pointerLocked = true;
+        ui.start.classList.add("hidden");
+      });
+    } else if (
+      !document.pointerLockElement
+    ) {
+      pointerLocked = true;
+      ui.start.classList.add("hidden");
+    }
+  }
+
   ui.enter.addEventListener(
     "click",
-    () => {
-      started = true;
-      initAudio();
-
-      renderer.domElement.requestPointerLock();
-    }
+    startTape
   );
 
   document.addEventListener(
@@ -2757,6 +2869,14 @@
       }
 
       keysDown.add(event.code);
+
+      if (
+        event.code === "Enter" &&
+        !event.repeat &&
+        !ui.start.classList.contains("hidden")
+      ) {
+        startTape();
+      }
 
       if (
         event.code === "KeyF" &&
