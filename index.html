@@ -415,6 +415,7 @@
   }
 
   .titleOption {
+    position: relative;
     width: 100%;
     border: 0;
     border-left: 2px solid transparent;
@@ -422,7 +423,7 @@
     color: rgba(239, 236, 216, 0.84);
     font: 600 clamp(17px, 2vw, 25px) Georgia, "Times New Roman", serif;
     letter-spacing: 0.08em;
-    padding: 8px 14px;
+    padding: 8px 0;
     text-align: left;
     text-shadow: 0 2px 6px #000;
     transition: color 0.12s, background 0.12s, border-color 0.12s,
@@ -431,10 +432,11 @@
 
   .titleOption::before {
     content: "◌";
-    display: inline-block;
-    margin-right: 10px;
+    position: absolute;
+    top: 50%;
+    left: -18px;
     opacity: 0;
-    transform: translateX(-5px);
+    transform: translate(-5px, -50%);
     transition: opacity 0.12s, transform 0.12s;
   }
 
@@ -450,7 +452,15 @@
   .titleOption:hover::before,
   .titleOption:focus-visible::before {
     opacity: 1;
-    transform: translateX(0);
+    transform: translate(0, -50%);
+  }
+
+  #start .menuUtility {
+    justify-content: flex-start;
+  }
+
+  #start .menuUtility button {
+    padding: 8px 0;
   }
 
   .titleInstructions {
@@ -693,14 +703,14 @@
 
   .touchStick {
     position: absolute;
-    left: 18px;
-    bottom: 24px;
-    width: 104px;
-    height: 104px;
-    border: 1px solid rgba(217, 231, 198, 0.44);
+    left: 22px;
+    bottom: 22px;
+    width: 118px;
+    height: 118px;
+    border: 3px solid rgba(234, 230, 203, 0.76);
     border-radius: 50%;
     background: radial-gradient(circle, rgba(217, 231, 198, 0.08), rgba(0, 0, 0, 0.45));
-    box-shadow: 0 0 15px rgba(0, 0, 0, 0.7) inset;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.7) inset, 0 0 9px rgba(217, 231, 198, 0.12);
     pointer-events: auto;
     touch-action: none;
   }
@@ -732,30 +742,61 @@
   }
 
   .touchActions {
-    position: absolute;
-    right: 18px;
-    bottom: 24px;
-    display: grid;
-    grid-template-columns: repeat(2, 54px);
-    gap: 8px;
-    pointer-events: auto;
+    pointer-events: none;
   }
 
   .touchAction {
-    width: 54px;
-    height: 46px;
+    position: absolute;
+    display: grid;
+    place-content: center;
+    width: 74px;
+    height: 74px;
     padding: 0;
-    border-color: rgba(217, 231, 198, 0.6);
-    background: rgba(0, 0, 0, 0.7);
+    border: 3px solid rgba(234, 230, 203, 0.76);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(217, 231, 198, 0.14), rgba(0, 0, 0, 0.68));
     color: #f2ecc9;
-    font-size: 10px;
-    letter-spacing: 0.08em;
+    box-shadow: 0 0 13px rgba(0, 0, 0, 0.68) inset, 0 0 8px rgba(217, 231, 198, 0.12);
     touch-action: manipulation;
   }
 
   .touchAction.primary {
-    border-color: #f2ecc9;
+    border-color: #fff8d9;
     color: #fff8d9;
+  }
+
+  .touchAction.held,
+  .touchAction:active {
+    background: rgba(242, 236, 201, 0.3);
+    box-shadow: 0 0 18px rgba(242, 236, 201, 0.28);
+  }
+
+  #touchUse {
+    right: 22px;
+    bottom: 154px;
+  }
+
+  #touchSprint {
+    right: 122px;
+    bottom: 28px;
+  }
+
+  #touchLight {
+    right: 22px;
+    bottom: 28px;
+  }
+
+  .touchGlyph {
+    display: block;
+    font-size: 25px;
+    line-height: 0.9;
+  }
+
+  .touchName {
+    display: block;
+    margin-top: 3px;
+    font-size: 8px;
+    letter-spacing: 0.12em;
   }
 
   .touchPause {
@@ -905,9 +946,9 @@
 <div id="touchControls" aria-hidden="true">
   <div id="touchStick" class="touchStick"><div id="touchKnob" class="touchKnob"></div></div>
   <div class="touchActions">
-    <button id="touchSprint" class="touchAction">RUN</button>
-    <button id="touchLight" class="touchAction">LIGHT</button>
-    <button id="touchUse" class="touchAction primary">USE</button>
+    <button id="touchSprint" class="touchAction" aria-label="Hold to run"><span class="touchGlyph">↯</span><span class="touchName">RUN</span></button>
+    <button id="touchLight" class="touchAction" aria-label="Toggle flashlight"><span class="touchGlyph">▰</span><span class="touchName">LIGHT</span></button>
+    <button id="touchUse" class="touchAction primary" aria-label="Interact or use item"><span class="touchGlyph">✋</span><span class="touchName">USE</span></button>
   </div>
   <button id="touchPause" class="touchPause" aria-label="Pause game">Ⅱ</button>
 </div>
@@ -2367,6 +2408,7 @@ import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/j
     mobileInput.movePointerId = null;
     mobileInput.lookPointerId = null;
     ui.touchKnob.style.transform = "translate(-50%, -50%)";
+    ui.touchSprint.classList.remove("held");
   }
 
   function updateKeyGuide() {
@@ -4461,6 +4503,7 @@ import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/j
         event.preventDefault();
         if (hold) {
           mobileInput.sprint = true;
+          button.classList.add("held");
           button.setPointerCapture(event.pointerId);
         }
       });
@@ -4473,6 +4516,7 @@ import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/j
         event.preventDefault();
         if (hold) {
           mobileInput.sprint = false;
+          button.classList.remove("held");
         } else if (pointerLocked) {
           action();
         }
@@ -4481,6 +4525,7 @@ import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/j
       button.addEventListener("pointercancel", () => {
         if (hold) {
           mobileInput.sprint = false;
+          button.classList.remove("held");
         }
       });
     };
