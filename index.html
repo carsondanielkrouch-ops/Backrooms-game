@@ -3601,14 +3601,18 @@ import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/j
         ) *
           0.04;
       const brightness = baseline * flicker;
+      const titleBrightness =
+        !started && entry === menuLight ? 1.55 : 1;
+      const displayedBrightness =
+        brightness * titleBrightness;
 
       entry.light.intensity =
-        entry.base * brightness;
+        entry.base * displayedBrightness;
 
       entry.panel.material.color.setRGB(
-        0.87 * (0.18 + brightness * 0.82),
-        0.85 * (0.18 + brightness * 0.82),
-        0.63 * (0.18 + brightness * 0.82)
+        0.87 * (0.18 + displayedBrightness * 0.82),
+        0.85 * (0.18 + displayedBrightness * 0.82),
+        0.63 * (0.18 + displayedBrightness * 0.82)
       );
     }
 
@@ -3681,6 +3685,15 @@ import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/j
 
   function startTape() {
     started = true;
+
+    // The bandage at the spawn is hidden only for the title composition.
+    // Restore every uncollected bandage as soon as normal play begins.
+    for (const item of collectibles) {
+      if (item.type === "bandage" && !item.taken) {
+        item.object.visible = true;
+      }
+    }
+
     document.body.classList.remove("title-screen");
     ui.settings.classList.add("hidden");
     ui.settings.setAttribute("aria-hidden", "true");
@@ -4078,18 +4091,27 @@ import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/j
   updateUI();
 
   function updateTitleScene() {
+    // Pull the title camera back from the fixture so the menu has a wider,
+    // more cinematic view of the ceiling light and the surrounding hallway.
     camera.position.set(
+      menuLight.position.x - 2.8,
+      1.15,
+      menuLight.position.z + 5.6
+    );
+
+    camera.lookAt(
       menuLight.position.x,
-      EYE_H,
+      WALL_H - 0.15,
       menuLight.position.z
     );
 
-    camera.rotation.set(
-      1.03,
-      -0.32,
-      0,
-      "YXZ"
-    );
+    // Keep the start-area pickup out of the title shot without removing it
+    // from the actual game.
+    for (const item of collectibles) {
+      if (item.type === "bandage" && !item.taken) {
+        item.object.visible = false;
+      }
+    }
   }
 
   let lastTime = performance.now();
