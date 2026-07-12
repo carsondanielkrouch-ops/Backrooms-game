@@ -24,7 +24,7 @@
     font-family: "Courier New", monospace;
   }
 
-  canvas {
+  #gameCanvas {
     display: block;
     position: fixed;
     inset: 0;
@@ -57,8 +57,13 @@
     color: var(--hud);
     text-shadow: 0 0 4px #000, 0 0 8px #000;
     font-weight: bold;
-    font-size: clamp(12px, 1.35vw, 18px);
+    font-size: clamp(11px, 1.15vw, 15px);
     z-index: 10;
+    transition: opacity 0.35s ease;
+  }
+
+  #hud.quiet .hudNonCritical {
+    opacity: 0.42;
   }
 
   #hud,
@@ -74,14 +79,15 @@
 
   .corner {
     position: absolute;
-    padding: 18px 22px;
+    padding: 13px 16px;
   }
 
   #rec {
     top: 0;
     left: 0;
     color: #ff5148;
-    letter-spacing: 1px;
+    font-size: 10px;
+    letter-spacing: 0.15em;
     animation: recPulse 1.05s steps(2, end) infinite;
   }
 
@@ -89,18 +95,44 @@
     top: 0;
     right: 0;
     text-align: right;
+    color: rgba(217, 231, 198, 0.56);
+    font-size: 10px;
+    letter-spacing: 0.08em;
   }
 
   #objective {
     left: 0;
     bottom: 0;
-    line-height: 1.45;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-height: 28px;
+    border-left: 2px solid rgba(217, 231, 198, 0.45);
+    background: linear-gradient(90deg, rgba(0, 0, 0, 0.6), transparent);
+  }
+
+  #keyText {
+    color: #f2ecc9;
+    font-size: 13px;
+    letter-spacing: 0.12em;
+  }
+
+  #threatAlert {
+    display: none;
+    color: #ff5148;
+    font-size: 14px;
+    letter-spacing: 0.12em;
+    animation: threatGlitch 0.16s steps(2, end) infinite;
+  }
+
+  #threatAlert.active {
+    display: block;
   }
 
   #meters {
     right: 0;
     bottom: 0;
-    width: min(310px, 42vw);
+    width: min(180px, 34vw);
   }
 
   #inventory {
@@ -114,14 +146,15 @@
 
   .inventorySlot {
     display: grid;
-    grid-template-columns: auto 1fr;
-    min-width: 82px;
-    min-height: 45px;
-    padding: 5px 7px;
+    grid-template-columns: auto 34px auto;
+    align-items: center;
+    min-width: 62px;
+    min-height: 42px;
+    padding: 4px 6px;
     border: 1px solid rgba(217, 231, 198, 0.35);
     background: rgba(0, 0, 0, 0.62);
     color: rgba(217, 231, 198, 0.48);
-    font-size: 10px;
+    font-size: 11px;
     letter-spacing: 0.06em;
   }
 
@@ -132,25 +165,59 @@
   }
 
   .slotKey {
-    grid-row: 1 / 3;
-    padding-right: 7px;
-    font-size: 15px;
+    padding-right: 4px;
+    color: rgba(217, 231, 198, 0.65);
+    font-size: 10px;
   }
 
   .slotCount {
     color: #fff6cf;
   }
 
+  .slotIcon {
+    min-width: 13px;
+    font-size: 16px;
+    text-align: center;
+  }
+
+  #bandagePreview {
+    display: none;
+    width: 32px;
+    height: 32px;
+    image-rendering: pixelated;
+    pointer-events: none;
+  }
+
+  #bandagePreview.ready {
+    display: block;
+  }
+
+  #bandageFallback.hidden {
+    display: none;
+  }
+
+  .inventorySlot.empty .slotIcon {
+    color: rgba(217, 231, 198, 0.22);
+  }
+
   .meterRow {
     display: grid;
-    grid-template-columns: 76px 1fr 42px;
-    gap: 8px;
+    grid-template-columns: 18px 1fr 26px;
+    gap: 5px;
     align-items: center;
-    margin-top: 5px;
+    margin-top: 4px;
+    color: rgba(217, 231, 198, 0.72);
+    font-size: 11px;
+  }
+
+  .meterIcon {
+    color: #f0ebce;
+    font-size: 14px;
+    text-align: center;
   }
 
   .bar {
-    height: 9px;
+    height: 6px;
     border: 1px solid rgba(217, 231, 198, 0.85);
     background: rgba(0, 0, 0, 0.55);
     box-shadow: 0 0 5px #000 inset;
@@ -178,7 +245,8 @@
     z-index: 13;
     color: #fff6cf;
     font-weight: bold;
-    font-size: clamp(13px, 1.4vw, 20px);
+    font-size: clamp(11px, 1.2vw, 16px);
+    letter-spacing: 0.1em;
     text-shadow: 0 2px 6px #000;
     opacity: 0;
     transition: opacity 0.12s;
@@ -190,10 +258,30 @@
     z-index: 14;
     color: #fff;
     font-weight: bold;
-    letter-spacing: 2px;
+    font-size: clamp(10px, 1.1vw, 14px);
+    letter-spacing: 0.16em;
     opacity: 0;
     transition: opacity 0.18s;
     text-shadow: 0 0 8px #000;
+    animation: tapeJitter 0.18s steps(2, end) infinite;
+  }
+
+  .keycap {
+    display: inline-block;
+    min-width: 22px;
+    margin-right: 7px;
+    padding: 2px 5px;
+    border: 1px solid currentColor;
+    background: rgba(0, 0, 0, 0.68);
+    color: #fff6cf;
+    font-size: 0.78em;
+    text-align: center;
+  }
+
+  .promptIcon {
+    display: inline-block;
+    width: 20px;
+    color: var(--hud);
   }
 
   #vignette {
@@ -342,7 +430,7 @@
   }
 
   .titleOption::before {
-    content: "›";
+    content: "◌";
     display: inline-block;
     margin-right: 10px;
     opacity: 0;
@@ -455,6 +543,12 @@
     font-size: 12px;
   }
 
+  .menuIcon {
+    display: inline-block;
+    width: 1.3em;
+    color: #d9d0a4;
+  }
+
   .debugOption {
     display: flex;
     justify-content: space-between;
@@ -537,12 +631,12 @@
     position: absolute;
     top: 8%;
     left: 50%;
-    color: var(--hud);
-    font-size: clamp(24px, 3vw, 38px);
+    color: #f2ecc9;
+    font-size: clamp(28px, 3.2vw, 42px);
     line-height: 1;
     opacity: 0;
     text-align: center;
-    text-shadow: 0 0 5px #000, 0 0 10px #000;
+    text-shadow: 1px 0 rgba(255, 81, 72, 0.35), -1px 0 rgba(148, 220, 255, 0.28), 0 0 10px #000;
     transform: translateX(-50%);
     transition: opacity 0.18s;
   }
@@ -551,6 +645,129 @@
     display: block;
     font-family: Arial, sans-serif;
     font-weight: bold;
+    animation: guideFlicker 1.8s steps(2, end) infinite;
+  }
+
+  .mobileHint,
+  #touchControls {
+    display: none;
+  }
+
+  body.mobile .desktopHint {
+    display: none;
+  }
+
+  body.mobile .mobileHint {
+    display: block;
+  }
+
+  body.mobile #gameCanvas {
+    touch-action: none;
+  }
+
+  body.mobile.playing #touchControls {
+    display: block;
+    position: fixed;
+    inset: auto;
+    top: 50%;
+    left: 50%;
+    width: min(100vw, calc(100vh * 4 / 3));
+    height: min(100vh, calc(100vw * 3 / 4));
+    z-index: 20;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  body.mobile.playing.mobile-paused #touchControls {
+    display: none;
+  }
+
+  body.mobile #inventory {
+    pointer-events: auto;
+  }
+
+  body.mobile .inventorySlot {
+    pointer-events: auto;
+    touch-action: manipulation;
+  }
+
+  .touchStick {
+    position: absolute;
+    left: 18px;
+    bottom: 24px;
+    width: 104px;
+    height: 104px;
+    border: 1px solid rgba(217, 231, 198, 0.44);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(217, 231, 198, 0.08), rgba(0, 0, 0, 0.45));
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.7) inset;
+    pointer-events: auto;
+    touch-action: none;
+  }
+
+  .touchStick::before,
+  .touchStick::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    background: rgba(217, 231, 198, 0.23);
+    transform: translate(-50%, -50%);
+  }
+
+  .touchStick::before { width: 1px; height: 72%; }
+  .touchStick::after { width: 72%; height: 1px; }
+
+  .touchKnob {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 42px;
+    height: 42px;
+    border: 1px solid rgba(242, 236, 201, 0.82);
+    border-radius: 50%;
+    background: rgba(217, 231, 198, 0.17);
+    box-shadow: 0 0 10px rgba(217, 231, 198, 0.16);
+    transform: translate(-50%, -50%);
+  }
+
+  .touchActions {
+    position: absolute;
+    right: 18px;
+    bottom: 24px;
+    display: grid;
+    grid-template-columns: repeat(2, 54px);
+    gap: 8px;
+    pointer-events: auto;
+  }
+
+  .touchAction {
+    width: 54px;
+    height: 46px;
+    padding: 0;
+    border-color: rgba(217, 231, 198, 0.6);
+    background: rgba(0, 0, 0, 0.7);
+    color: #f2ecc9;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    touch-action: manipulation;
+  }
+
+  .touchAction.primary {
+    border-color: #f2ecc9;
+    color: #fff8d9;
+  }
+
+  .touchPause {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 32px;
+    height: 28px;
+    padding: 0;
+    font-size: 14px;
+    pointer-events: auto;
+    touch-action: manipulation;
   }
 
   @keyframes recPulse {
@@ -595,39 +812,58 @@
       transform: translateX(1px);
     }
   }
+
+  @keyframes threatGlitch {
+    50% {
+      opacity: 0.35;
+      transform: translateX(2px);
+    }
+  }
+
+  @keyframes tapeJitter {
+    50% {
+      transform: translateX(1px);
+    }
+  }
+
+  @keyframes guideFlicker {
+    0%, 84%, 100% { opacity: 1; }
+    85% { opacity: 0.35; }
+    88% { opacity: 0.9; }
+  }
 </style>
 </head>
 <body class="title-screen">
 
 <div id="hud">
-  <div id="rec" class="corner">● REC</div>
+  <div id="rec" class="corner hudNonCritical">● REC</div>
 
-  <div id="clock" class="corner">
+  <div id="clock" class="corner hudNonCritical">
     <div id="dateText">--/--/----</div>
     <div id="timeText">--:--:--</div>
   </div>
 
-  <div id="objective" class="corner">
-    <div>OBJECTIVE: FIND THE KEYS</div>
-    <div id="keyText">KEYS 0/3</div>
-    <div id="stateText">SIGNAL: SEARCHING</div>
+  <div id="objective" class="corner hudNonCritical" aria-label="Keys collected">
+    <span aria-hidden="true">⚿</span>
+    <span id="keyText">0/3</span>
+    <span id="threatAlert" aria-label="Entity nearby">◉</span>
   </div>
 
-  <div id="meters" class="corner">
+  <div id="meters" class="corner hudNonCritical">
     <div class="meterRow">
-      <span>HEALTH</span>
+      <span class="meterIcon" aria-label="Health">✚</span>
       <div class="bar"><div id="healthFill" class="fill"></div></div>
       <span id="healthText">100</span>
     </div>
 
     <div class="meterRow">
-      <span>STAMINA</span>
+      <span class="meterIcon" aria-label="Stamina">↯</span>
       <div class="bar"><div id="staminaFill" class="fill"></div></div>
       <span id="staminaText">100</span>
     </div>
 
     <div class="meterRow">
-      <span>BATTERY</span>
+      <span class="meterIcon" aria-label="Flashlight battery">▰</span>
       <div class="bar"><div id="batteryFill" class="fill"></div></div>
       <span id="batteryText">100</span>
     </div>
@@ -636,17 +872,20 @@
   <div id="inventory" aria-label="Inventory">
     <div class="inventorySlot selected" data-slot="0">
       <span class="slotKey">1</span>
-      <span>BANDAGE</span>
+      <span class="slotIcon" aria-label="Bandage">
+        <canvas id="bandagePreview" width="40" height="40"></canvas>
+        <span id="bandageFallback">✚</span>
+      </span>
       <span id="bandageCount" class="slotCount">x0</span>
     </div>
-    <div class="inventorySlot" data-slot="1">
-      <span class="slotKey">2</span><span>EMPTY</span>
+    <div class="inventorySlot empty" data-slot="1">
+      <span class="slotKey">2</span><span class="slotIcon" aria-label="Empty inventory slot">□</span>
     </div>
-    <div class="inventorySlot" data-slot="2">
-      <span class="slotKey">3</span><span>EMPTY</span>
+    <div class="inventorySlot empty" data-slot="2">
+      <span class="slotKey">3</span><span class="slotIcon" aria-label="Empty inventory slot">□</span>
     </div>
-    <div class="inventorySlot" data-slot="3">
-      <span class="slotKey">4</span><span>EMPTY</span>
+    <div class="inventorySlot empty" data-slot="3">
+      <span class="slotKey">4</span><span class="slotIcon" aria-label="Empty inventory slot">□</span>
     </div>
   </div>
 
@@ -663,25 +902,37 @@
 <div id="prompt"></div>
 <div id="toast"></div>
 
+<div id="touchControls" aria-hidden="true">
+  <div id="touchStick" class="touchStick"><div id="touchKnob" class="touchKnob"></div></div>
+  <div class="touchActions">
+    <button id="touchSprint" class="touchAction">RUN</button>
+    <button id="touchLight" class="touchAction">LIGHT</button>
+    <button id="touchUse" class="touchAction primary">USE</button>
+  </div>
+  <button id="touchPause" class="touchPause" aria-label="Pause game">Ⅱ</button>
+</div>
+
 <div id="start">
   <div class="panel">
     <div class="tapeLabel">RECOVERED TAPE // 07</div>
     <h1>BACKROOMS</h1>
 
     <div class="titleMenu">
-      <button id="enterBtn" class="titleOption">START TAPE</button>
-      <button id="titleSettingsBtn" class="titleOption">SETTINGS</button>
+      <button id="enterBtn" class="titleOption"><span class="menuIcon">▶</span>START TAPE</button>
+      <button id="titleSettingsBtn" class="titleOption"><span class="menuIcon">⚙</span>SETTINGS</button>
     </div>
 
     <div class="titleInstructions">
-      <strong>FIND THREE KEYS.</strong><br>
-      WASD / ARROWS: MOVE<br>
-      SHIFT: SPRINT &nbsp; F: FLASHLIGHT<br>
-      1–4: SELECT ITEM &nbsp; E: INTERACT / USE
+      <span class="desktopHint"><strong>⚿ ×3</strong><br>
+      WASD / ARROWS · MOVE &nbsp; SHIFT · SPRINT<br>
+      F · LIGHT &nbsp; 1–4 · ITEMS &nbsp; E · USE</span>
+      <span class="mobileHint"><strong>⚿ ×3</strong><br>
+      LEFT PAD · MOVE &nbsp; RIGHT SWIPE · LOOK<br>
+      USE · INTERACT &nbsp; TAP SLOT · SELECT</span>
     </div>
 
     <div class="menuUtility">
-      <button id="titleDebugBtn">DEBUG</button>
+      <button id="titleDebugBtn"><span class="menuIcon">⌘</span>DEBUG</button>
     </div>
   </div>
 </div>
@@ -692,19 +943,19 @@
     <div class="sub">
       The hallway waits for no one.
       <br><br>
-      WASD / ARROWS: MOVE &nbsp; SHIFT: SPRINT &nbsp; CTRL/C: SNEAK
+      WASD / ARROWS · MOVE &nbsp; SHIFT · SPRINT &nbsp; CTRL/C · SNEAK
       <br>
-      F: FLASHLIGHT &nbsp; E: INTERACT &nbsp; ESC: PAUSE
+      F · LIGHT &nbsp; E · USE &nbsp; ESC · PAUSE
       <br>
-      1–4: SELECT INVENTORY SLOT &nbsp; E: USE ITEM
+      1–4 · ITEMS
     </div>
     <div class="menuActions">
-      <button id="resumeBtn">RESUME TAPE</button>
-      <button id="restartBtn">REWIND TAPE</button>
+      <button id="resumeBtn"><span class="menuIcon">▶</span>RESUME TAPE</button>
+      <button id="restartBtn"><span class="menuIcon">↺</span>REWIND TAPE</button>
     </div>
     <div class="menuUtility">
-      <button id="pauseSettingsBtn">SETTINGS</button>
-      <button id="pauseDebugBtn">DEBUG</button>
+      <button id="pauseSettingsBtn"><span class="menuIcon">⚙</span>SETTINGS</button>
+      <button id="pauseDebugBtn"><span class="menuIcon">⌘</span>DEBUG</button>
     </div>
   </div>
 </div>
@@ -713,12 +964,12 @@
   <div class="panel">
     <h1>SETTINGS</h1>
     <label class="volumeControl" for="volumeRange">
-      <span>MASTER VOLUME</span>
+      <span>◖ MASTER VOLUME</span>
       <span id="volumeValue">155%</span>
       <input id="volumeRange" type="range" min="0" max="2" value="1.55" step="0.05" />
     </label>
     <div class="menuActions">
-      <button id="closeSettingsBtn">BACK</button>
+      <button id="closeSettingsBtn"><span class="menuIcon">‹</span>BACK</button>
     </div>
   </div>
 </div>
@@ -727,27 +978,27 @@
   <div class="panel">
     <h1>DEBUG</h1>
     <label class="debugOption" for="infiniteStaminaToggle">
-      <span>INFINITE STAMINA</span>
+      <span>↯ INFINITE STAMINA</span>
       <input id="infiniteStaminaToggle" type="checkbox" />
     </label>
     <label class="debugOption" for="infiniteFlashlightToggle">
-      <span>INFINITE FLASHLIGHT</span>
+      <span>▰ INFINITE FLASHLIGHT</span>
       <input id="infiniteFlashlightToggle" type="checkbox" />
     </label>
     <label class="debugOption" for="infiniteHealthToggle">
-      <span>INFINITE HEALTH</span>
+      <span>✚ INFINITE HEALTH</span>
       <input id="infiniteHealthToggle" type="checkbox" />
     </label>
     <label class="debugOption" for="nearbyMonsterToggle">
-      <span>MONSTER NEARBY AT START</span>
+      <span>◉ MONSTER NEARBY AT START</span>
       <input id="nearbyMonsterToggle" type="checkbox" />
     </label>
     <label class="debugOption" for="superSpeedToggle">
-      <span>SUPER SPEED</span>
+      <span>» SUPER SPEED</span>
       <input id="superSpeedToggle" type="checkbox" />
     </label>
     <div class="menuActions">
-      <button id="closeDebugBtn">BACK</button>
+      <button id="closeDebugBtn"><span class="menuIcon">‹</span>BACK</button>
     </div>
   </div>
 </div>
@@ -756,7 +1007,7 @@
   <div class="panel">
     <h1 id="endTitle">GAME OVER</h1>
     <div id="endText" class="sub"></div>
-    <button onclick="location.reload()">REWIND TAPE</button>
+    <button onclick="location.reload()"><span class="menuIcon">↺</span>REWIND TAPE</button>
   </div>
 </div>
 
@@ -829,6 +1080,7 @@ import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/j
   const $ = (id) => document.getElementById(id);
 
   const ui = {
+    hud: $("hud"),
     start: $("start"),
     enter: $("enterBtn"),
     settings: $("settings"),
@@ -860,14 +1112,23 @@ import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/j
     batteryText: $("batteryText"),
     inventorySlots: Array.from(document.querySelectorAll(".inventorySlot")),
     bandageCount: $("bandageCount"),
+    bandagePreview: $("bandagePreview"),
+    bandageFallback: $("bandageFallback"),
     keyText: $("keyText"),
     keyGuide: $("keyGuide"),
     keyArrow: $("keyArrow"),
-    stateText: $("stateText"),
+    threatAlert: $("threatAlert"),
     prompt: $("prompt"),
     toast: $("toast"),
     damage: $("damage"),
-    noise: $("noise")
+    noise: $("noise"),
+    touchControls: $("touchControls"),
+    touchStick: $("touchStick"),
+    touchKnob: $("touchKnob"),
+    touchSprint: $("touchSprint"),
+    touchLight: $("touchLight"),
+    touchUse: $("touchUse"),
+    touchPause: $("touchPause")
   };
 
   function gridToWorld(c, r) {
@@ -1440,6 +1701,8 @@ import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/j
         const groundedBox = new THREE.Box3().setFromObject(template);
         template.position.y -= groundedBox.min.y;
 
+        renderBandageInventoryPreview(template);
+
         for (const cell of bandageCells) {
           const group = new THREE.Group();
           const visual = template.clone(true);
@@ -1465,6 +1728,46 @@ import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/j
       undefined,
       () => console.warn("Bandage GLB could not be loaded.")
     );
+  }
+
+  function renderBandageInventoryPreview(template) {
+    const previewRenderer = new THREE.WebGLRenderer({
+      canvas: ui.bandagePreview,
+      alpha: true,
+      antialias: false,
+      powerPreference: "low-power"
+    });
+    previewRenderer.setPixelRatio(1);
+    previewRenderer.setSize(40, 40, false);
+    previewRenderer.outputColorSpace = THREE.SRGBColorSpace;
+    previewRenderer.setClearColor(0x000000, 0);
+
+    const previewScene = new THREE.Scene();
+    const previewCamera = new THREE.PerspectiveCamera(32, 1, 0.01, 10);
+    const preview = template.clone(true);
+    preview.rotation.set(-0.22, 0.65, 0);
+    previewScene.add(preview);
+
+    const bounds = new THREE.Box3().setFromObject(preview);
+    const center = bounds.getCenter(new THREE.Vector3());
+    const size = bounds.getSize(new THREE.Vector3());
+    const largestAxis = Math.max(size.x, size.y, size.z) || 1;
+
+    previewCamera.position.set(
+      center.x + largestAxis * 1.45,
+      center.y + largestAxis * 0.95,
+      center.z + largestAxis * 1.7
+    );
+    previewCamera.lookAt(center);
+
+    previewScene.add(new THREE.HemisphereLight(0xf4eccf, 0x17130c, 1.8));
+    const previewLight = new THREE.DirectionalLight(0xfff1c2, 2.4);
+    previewLight.position.set(2, 3, 4);
+    previewScene.add(previewLight);
+
+    previewRenderer.render(previewScene, previewCamera);
+    ui.bandagePreview.classList.add("ready");
+    ui.bandageFallback.classList.add("hidden");
   }
 
   keyCells.forEach((cell) => {
@@ -1910,6 +2213,29 @@ import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/j
 
   const keysDown = new Set();
 
+  const isMobileDevice =
+    window.matchMedia("(pointer: coarse)").matches &&
+    (
+      navigator.maxTouchPoints > 0 ||
+      /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+    );
+
+  const mobileInput = {
+    forward: 0,
+    side: 0,
+    sprint: false,
+    lookPointerId: null,
+    lookX: 0,
+    lookY: 0,
+    movePointerId: null
+  };
+
+  document.body.classList.toggle("mobile", isMobileDevice);
+  ui.touchControls.setAttribute(
+    "aria-hidden",
+    String(!isMobileDevice)
+  );
+
   let pointerLocked = false;
   let manualControls = false;
   let started = false;
@@ -1972,7 +2298,20 @@ import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/j
     );
 
     ui.keyText.textContent =
-      `KEYS ${player.keys}/${keyCells.length}`;
+      `${player.keys}/${keyCells.length}`;
+
+    const dangerActive =
+      ai.state === "chase" || ai.state === "attack";
+    const interactionActive =
+      Boolean(nearbyBandage) || interactionReady;
+    ui.hud.classList.toggle(
+      "quiet",
+      player.moving &&
+        health >= 30 &&
+        battery >= 20 &&
+        !dangerActive &&
+        !interactionActive
+    );
 
     updateInventoryUI();
     updateKeyGuide();
@@ -1988,6 +2327,46 @@ import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/j
 
     ui.bandageCount.textContent =
       `x${inventory.slots[0].count}`;
+  }
+
+  function selectInventorySlot(index) {
+    if (index < 0 || index >= inventory.slots.length) {
+      return;
+    }
+
+    inventory.selectedSlot = index;
+    updateInventoryUI();
+
+    const selected = inventory.slots[index];
+    showToast(
+      selected
+        ? `SELECTED: ${selected.type.toUpperCase()}`
+        : "SELECTED: EMPTY",
+      0.65
+    );
+  }
+
+  function toggleFlashlight() {
+    if (!pointerLocked || player.battery <= 0) {
+      return;
+    }
+
+    player.flashlight = !player.flashlight;
+    showToast(
+      player.flashlight
+        ? "FLASHLIGHT ON"
+        : "FLASHLIGHT OFF",
+      0.65
+    );
+  }
+
+  function resetMobileInput() {
+    mobileInput.forward = 0;
+    mobileInput.side = 0;
+    mobileInput.sprint = false;
+    mobileInput.movePointerId = null;
+    mobileInput.lookPointerId = null;
+    ui.touchKnob.style.transform = "translate(-50%, -50%)";
   }
 
   function updateKeyGuide() {
@@ -2553,7 +2932,7 @@ import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/j
       return;
     }
 
-    const forwardInput =
+    const keyboardForwardInput =
       (
         keysDown.has("KeyW") ||
         keysDown.has("ArrowUp")
@@ -2567,7 +2946,7 @@ import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/j
           : 0
       );
 
-    const sideInput =
+    const keyboardSideInput =
       (
         keysDown.has("KeyD") ||
         keysDown.has("ArrowRight")
@@ -2580,6 +2959,20 @@ import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/j
           ? 1
           : 0
       );
+
+    const forwardInput = clamp(
+      keyboardForwardInput +
+        (isMobileDevice ? mobileInput.forward : 0),
+      -1,
+      1
+    );
+
+    const sideInput = clamp(
+      keyboardSideInput +
+        (isMobileDevice ? mobileInput.side : 0),
+      -1,
+      1
+    );
 
     const inputLength =
       Math.hypot(
@@ -2603,7 +2996,8 @@ import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/j
       !player.sneaking &&
       (
         keysDown.has("ShiftLeft") ||
-        keysDown.has("ShiftRight")
+        keysDown.has("ShiftRight") ||
+        (isMobileDevice && mobileInput.sprint)
       ) &&
       (
         debug.infiniteStamina ||
@@ -3324,18 +3718,16 @@ import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/j
       }
     );
 
-    ui.stateText.textContent =
+    ui.threatAlert.classList.toggle(
+      "active",
+      ai.state === "chase" || ai.state === "attack"
+    );
+    ui.threatAlert.setAttribute(
+      "aria-label",
       ai.state === "attack"
-        ? "SIGNAL: ENTITY CONTACT"
-        : ai.state === "chase"
-          ? "SIGNAL: MOVEMENT DETECTED"
-          : "SIGNAL: SEARCHING";
-
-    ui.stateText.style.color =
-      ai.state === "chase" ||
-      ai.state === "attack"
-        ? "#ff5148"
-        : "";
+        ? "Entity contact"
+        : "Entity nearby"
+    );
 
     heartbeat(
       distance,
@@ -3383,7 +3775,8 @@ import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/j
 
     if (nearbyBandage) {
       ui.prompt.style.opacity = "1";
-      ui.prompt.textContent = "[ E ] PICK UP BANDAGE";
+      ui.prompt.innerHTML =
+        '<span class="keycap">E</span><span class="promptIcon">✚</span>PICK UP';
     } else if (interactionReady) {
       ui.prompt.style.opacity = "1";
 
@@ -3391,15 +3784,15 @@ import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/j
         player.keys ===
         keyCells.length
       ) {
-        ui.prompt.textContent =
-          "[ E ] UNLOCK FLOOR HATCH";
+        ui.prompt.innerHTML =
+          '<span class="keycap">E</span><span class="promptIcon">▣</span>UNLOCK HATCH';
       } else {
         const remaining =
           keyCells.length -
           player.keys;
 
-        ui.prompt.textContent =
-          `LOCKED — ${remaining} KEY${remaining === 1 ? "" : "S"} MISSING`;
+        ui.prompt.innerHTML =
+          `<span class="promptIcon">⚿</span>LOCKED · ${remaining} MISSING`;
       }
     } else {
       ui.prompt.style.opacity = "0";
@@ -3471,6 +3864,8 @@ import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/j
     player.escaped = escaped;
     player.dead = !escaped;
     pointerLocked = false;
+    resetMobileInput();
+    document.body.classList.remove("playing");
 
     if (document.pointerLockElement) {
       document.exitPointerLock();
@@ -3662,6 +4057,8 @@ import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/j
   function enterGameplayWithoutPointerLock() {
     manualControls = true;
     pointerLocked = true;
+    document.body.classList.add("playing");
+    document.body.classList.remove("mobile-paused");
     ui.start.classList.add("hidden");
     ui.pause.classList.add("hidden");
     ui.pause.setAttribute("aria-hidden", "true");
@@ -3669,6 +4066,10 @@ import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/j
 
   function requestGameplayFocus() {
     enterGameplayWithoutPointerLock();
+
+    if (isMobileDevice) {
+      return;
+    }
 
     const lockPromise =
       renderer.domElement.requestPointerLock?.();
@@ -3685,6 +4086,7 @@ import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/j
 
   function startTape() {
     started = true;
+    document.body.classList.add("playing");
 
     // The bandage at the spawn is hidden only for the title composition.
     // Restore every uncollected bandage as soon as normal play begins.
@@ -3806,6 +4208,8 @@ import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/j
     manualControls = false;
     gamePaused = true;
     keysDown.clear();
+    resetMobileInput();
+    document.body.classList.add("mobile-paused");
 
     if (audioContext && audioContext.state === "running") {
       audioContext.suspend().catch(() => {});
@@ -3817,6 +4221,7 @@ import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/j
 
   function resumeTape() {
     gamePaused = false;
+    document.body.classList.remove("mobile-paused");
     initAudio();
     requestGameplayFocus();
   }
@@ -3959,6 +4364,146 @@ import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/j
     }
   );
 
+  function updateTouchStick(event) {
+    const rect = ui.touchStick.getBoundingClientRect();
+    const radius = rect.width * 0.31;
+    const rawX = event.clientX - (rect.left + rect.width / 2);
+    const rawY = event.clientY - (rect.top + rect.height / 2);
+    const length = Math.hypot(rawX, rawY);
+    const scale = length > radius ? radius / length : 1;
+    const x = rawX * scale;
+    const y = rawY * scale;
+
+    mobileInput.side = x / radius;
+    mobileInput.forward = -y / radius;
+    ui.touchKnob.style.transform =
+      `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
+  }
+
+  if (isMobileDevice) {
+    ui.touchStick.addEventListener("pointerdown", (event) => {
+      if (event.pointerType !== "touch" || !pointerLocked) {
+        return;
+      }
+
+      event.preventDefault();
+      mobileInput.movePointerId = event.pointerId;
+      ui.touchStick.setPointerCapture(event.pointerId);
+      updateTouchStick(event);
+    });
+
+    ui.touchStick.addEventListener("pointermove", (event) => {
+      if (event.pointerId === mobileInput.movePointerId) {
+        event.preventDefault();
+        updateTouchStick(event);
+      }
+    });
+
+    const releaseTouchStick = (event) => {
+      if (event.pointerId !== mobileInput.movePointerId) {
+        return;
+      }
+
+      mobileInput.forward = 0;
+      mobileInput.side = 0;
+      mobileInput.movePointerId = null;
+      ui.touchKnob.style.transform = "translate(-50%, -50%)";
+    };
+
+    ui.touchStick.addEventListener("pointerup", releaseTouchStick);
+    ui.touchStick.addEventListener("pointercancel", releaseTouchStick);
+
+    renderer.domElement.addEventListener("pointerdown", (event) => {
+      if (
+        event.pointerType !== "touch" ||
+        !pointerLocked ||
+        event.clientX < window.innerWidth * 0.42
+      ) {
+        return;
+      }
+
+      mobileInput.lookPointerId = event.pointerId;
+      mobileInput.lookX = event.clientX;
+      mobileInput.lookY = event.clientY;
+      renderer.domElement.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    });
+
+    renderer.domElement.addEventListener("pointermove", (event) => {
+      if (event.pointerId !== mobileInput.lookPointerId || !pointerLocked) {
+        return;
+      }
+
+      const deltaX = event.clientX - mobileInput.lookX;
+      const deltaY = event.clientY - mobileInput.lookY;
+      mobileInput.lookX = event.clientX;
+      mobileInput.lookY = event.clientY;
+      player.yaw -= deltaX * 0.006;
+      player.pitch = clamp(player.pitch - deltaY * 0.005, -1.42, 1.42);
+      event.preventDefault();
+    });
+
+    const releaseLook = (event) => {
+      if (event.pointerId === mobileInput.lookPointerId) {
+        mobileInput.lookPointerId = null;
+      }
+    };
+
+    renderer.domElement.addEventListener("pointerup", releaseLook);
+    renderer.domElement.addEventListener("pointercancel", releaseLook);
+
+    const bindTouchButton = (button, action, hold = false) => {
+      button.addEventListener("pointerdown", (event) => {
+        if (event.pointerType !== "touch" || !pointerLocked) {
+          return;
+        }
+
+        event.preventDefault();
+        if (hold) {
+          mobileInput.sprint = true;
+          button.setPointerCapture(event.pointerId);
+        }
+      });
+
+      button.addEventListener("pointerup", (event) => {
+        if (event.pointerType !== "touch") {
+          return;
+        }
+
+        event.preventDefault();
+        if (hold) {
+          mobileInput.sprint = false;
+        } else if (pointerLocked) {
+          action();
+        }
+      });
+
+      button.addEventListener("pointercancel", () => {
+        if (hold) {
+          mobileInput.sprint = false;
+        }
+      });
+    };
+
+    bindTouchButton(ui.touchSprint, null, true);
+    bindTouchButton(ui.touchLight, toggleFlashlight);
+    bindTouchButton(ui.touchUse, interact);
+    bindTouchButton(ui.touchPause, pauseTape);
+
+    ui.inventorySlots.forEach((slot, index) => {
+      slot.addEventListener("pointerup", (event) => {
+        if (
+          event.pointerType === "touch" &&
+          pointerLocked &&
+          !gamePaused
+        ) {
+          event.preventDefault();
+          selectInventorySlot(index);
+        }
+      });
+    });
+  }
+
   document.addEventListener(
     "keydown",
     (event) => {
@@ -3981,17 +4526,8 @@ import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/j
         !event.repeat &&
         pointerLocked
       ) {
-        inventory.selectedSlot =
-          Number(event.code.slice(-1)) - 1;
-        updateInventoryUI();
-
-        const selected =
-          inventory.slots[inventory.selectedSlot];
-        showToast(
-          selected
-            ? `SELECTED: ${selected.type.toUpperCase()}`
-            : "SELECTED: EMPTY",
-          0.65
+        selectInventorySlot(
+          Number(event.code.slice(-1)) - 1
         );
       }
 
@@ -4036,17 +4572,7 @@ import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/j
         !event.repeat &&
         pointerLocked
       ) {
-        if (player.battery > 0) {
-          player.flashlight =
-            !player.flashlight;
-
-          showToast(
-            player.flashlight
-              ? "FLASHLIGHT ON"
-              : "FLASHLIGHT OFF",
-            0.65
-          );
-        }
+        toggleFlashlight();
       }
 
       if (
@@ -4070,6 +4596,7 @@ import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/j
     "blur",
     () => {
       keysDown.clear();
+      resetMobileInput();
     }
   );
 
