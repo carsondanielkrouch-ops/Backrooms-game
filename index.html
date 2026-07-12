@@ -26,8 +26,11 @@
 
   canvas {
     display: block;
-    width: 100vw !important;
-    height: 100vh !important;
+    position: fixed;
+    inset: 0;
+    width: min(100vw, calc(100vh * 4 / 3)) !important;
+    height: min(100vh, calc(100vw * 3 / 4)) !important;
+    margin: auto;
     image-rendering: pixelated;
     image-rendering: crisp-edges;
     cursor: none;
@@ -41,6 +44,9 @@
   #prompt,
   #toast,
   #start,
+  #pause,
+  #settings,
+  #debug,
   #ending {
     position: fixed;
     inset: 0;
@@ -53,6 +59,17 @@
     font-weight: bold;
     font-size: clamp(12px, 1.35vw, 18px);
     z-index: 10;
+  }
+
+  #hud,
+  #vignette,
+  #damage {
+    inset: auto;
+    top: 50%;
+    left: 50%;
+    width: min(100vw, calc(100vh * 4 / 3));
+    height: min(100vh, calc(100vw * 3 / 4));
+    transform: translate(-50%, -50%);
   }
 
   .corner {
@@ -84,6 +101,44 @@
     right: 0;
     bottom: 0;
     width: min(310px, 42vw);
+  }
+
+  #inventory {
+    position: absolute;
+    left: 50%;
+    bottom: 16px;
+    display: flex;
+    gap: 6px;
+    transform: translateX(-50%);
+  }
+
+  .inventorySlot {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    min-width: 82px;
+    min-height: 45px;
+    padding: 5px 7px;
+    border: 1px solid rgba(217, 231, 198, 0.35);
+    background: rgba(0, 0, 0, 0.62);
+    color: rgba(217, 231, 198, 0.48);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+  }
+
+  .inventorySlot.selected {
+    border-color: var(--hud);
+    color: var(--hud);
+    box-shadow: 0 0 8px rgba(217, 231, 198, 0.18);
+  }
+
+  .slotKey {
+    grid-row: 1 / 3;
+    padding-right: 7px;
+    font-size: 15px;
+  }
+
+  .slotCount {
+    color: #fff6cf;
   }
 
   .meterRow {
@@ -197,6 +252,9 @@
   }
 
   #start,
+  #pause,
+  #settings,
+  #debug,
   #ending {
     z-index: 30;
     pointer-events: auto;
@@ -213,9 +271,206 @@
     cursor: default;
   }
 
+  #start {
+    align-items: stretch;
+    justify-content: flex-start;
+    padding: clamp(34px, 8vh, 92px) clamp(28px, 7vw, 110px);
+    background:
+      linear-gradient(
+        90deg,
+        rgba(0, 0, 0, 0.98) 0%,
+        rgba(0, 0, 0, 0.91) 30%,
+        rgba(0, 0, 0, 0.52) 52%,
+        rgba(0, 0, 0, 0.08) 78%,
+        rgba(0, 0, 0, 0.45) 100%
+      ),
+      radial-gradient(
+        ellipse at 73% 42%,
+        transparent 0%,
+        rgba(0, 0, 0, 0.6) 82%
+      );
+    text-align: left;
+  }
+
+  #start .panel {
+    width: min(430px, 78vw);
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .tapeLabel {
+    color: rgba(215, 212, 186, 0.5);
+    font-size: clamp(10px, 1vw, 13px);
+    letter-spacing: 0.22em;
+    margin-bottom: 16px;
+  }
+
+  #start h1 {
+    color: #eee9d3;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(44px, 7vw, 88px);
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    line-height: 0.9;
+    margin: 0 0 clamp(44px, 8vh, 90px);
+    text-shadow: 2px 1px 0 rgba(255, 255, 255, 0.12),
+      -2px 0 0 rgba(0, 0, 0, 0.85),
+      0 0 22px rgba(255, 255, 218, 0.13);
+  }
+
+  .titleMenu {
+    display: grid;
+    gap: 7px;
+    width: min(300px, 75vw);
+  }
+
+  .titleOption {
+    width: 100%;
+    border: 0;
+    border-left: 2px solid transparent;
+    background: transparent;
+    color: rgba(239, 236, 216, 0.84);
+    font: 600 clamp(17px, 2vw, 25px) Georgia, "Times New Roman", serif;
+    letter-spacing: 0.08em;
+    padding: 8px 14px;
+    text-align: left;
+    text-shadow: 0 2px 6px #000;
+    transition: color 0.12s, background 0.12s, border-color 0.12s,
+      transform 0.12s;
+  }
+
+  .titleOption::before {
+    content: "›";
+    display: inline-block;
+    margin-right: 10px;
+    opacity: 0;
+    transform: translateX(-5px);
+    transition: opacity 0.12s, transform 0.12s;
+  }
+
+  .titleOption:hover,
+  .titleOption:focus-visible {
+    border-left-color: #eee9d3;
+    background: linear-gradient(90deg, rgba(255, 255, 235, 0.16), transparent);
+    color: #fffdf1;
+    outline: 0;
+    transform: translateX(5px);
+  }
+
+  .titleOption:hover::before,
+  .titleOption:focus-visible::before {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  .titleInstructions {
+    color: rgba(212, 208, 181, 0.53);
+    font-size: clamp(10px, 1.05vw, 13px);
+    letter-spacing: 0.08em;
+    line-height: 1.7;
+    margin: clamp(28px, 5vh, 58px) 0 0 14px;
+    max-width: 310px;
+  }
+
+  .titleInstructions strong {
+    color: rgba(236, 233, 210, 0.83);
+    font-weight: normal;
+  }
+
+  .title-screen #hud,
+  .title-screen #prompt,
+  .title-screen #toast,
+  .title-screen #damage {
+    opacity: 0;
+  }
+
   #start.hidden,
+  #pause.hidden,
+  #settings.hidden,
+  #debug.hidden,
   #ending.hidden {
     display: none;
+  }
+
+  #pause {
+    background: radial-gradient(
+      circle at center,
+      rgba(31, 30, 18, 0.9),
+      rgba(0, 0, 0, 0.98)
+    );
+  }
+
+  #pause h1 {
+    font-size: clamp(24px, 4vw, 48px);
+  }
+
+  #settings {
+    z-index: 40;
+    background: rgba(0, 0, 0, 0.84);
+  }
+
+  #debug {
+    z-index: 40;
+    background: rgba(0, 0, 0, 0.88);
+  }
+
+  .volumeControl {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: center;
+    margin: 28px 0;
+    color: #eee7bd;
+    font-weight: bold;
+    letter-spacing: 0.08em;
+    text-align: left;
+  }
+
+  .volumeControl input {
+    grid-column: 1 / -1;
+    width: 100%;
+    accent-color: #ded8aa;
+    cursor: pointer;
+  }
+
+  .menuActions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .menuUtility {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 22px;
+  }
+
+  .menuUtility button {
+    padding: 8px 12px;
+    color: #b9b58f;
+    font-size: 12px;
+  }
+
+  .debugOption {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+    margin: 16px 0;
+    color: #eee7bd;
+    font-weight: bold;
+    letter-spacing: 0.08em;
+  }
+
+  .debugOption input {
+    width: 18px;
+    height: 18px;
+    accent-color: #ded8aa;
+    cursor: pointer;
   }
 
   .panel {
@@ -278,6 +533,26 @@
     border: 1px solid rgba(255, 255, 255, 0.5);
   }
 
+  #keyGuide {
+    position: absolute;
+    top: 8%;
+    left: 50%;
+    color: var(--hud);
+    font-size: clamp(24px, 3vw, 38px);
+    line-height: 1;
+    opacity: 0;
+    text-align: center;
+    text-shadow: 0 0 5px #000, 0 0 10px #000;
+    transform: translateX(-50%);
+    transition: opacity 0.18s;
+  }
+
+  #keyArrow {
+    display: block;
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+  }
+
   @keyframes recPulse {
     50% {
       opacity: 0.35;
@@ -322,7 +597,7 @@
   }
 </style>
 </head>
-<body>
+<body class="title-screen">
 
 <div id="hud">
   <div id="rec" class="corner">● REC</div>
@@ -358,7 +633,27 @@
     </div>
   </div>
 
+  <div id="inventory" aria-label="Inventory">
+    <div class="inventorySlot selected" data-slot="0">
+      <span class="slotKey">1</span>
+      <span>BANDAGE</span>
+      <span id="bandageCount" class="slotCount">x0</span>
+    </div>
+    <div class="inventorySlot" data-slot="1">
+      <span class="slotKey">2</span><span>EMPTY</span>
+    </div>
+    <div class="inventorySlot" data-slot="2">
+      <span class="slotKey">3</span><span>EMPTY</span>
+    </div>
+    <div class="inventorySlot" data-slot="3">
+      <span class="slotKey">4</span><span>EMPTY</span>
+    </div>
+  </div>
+
   <div id="crosshair"></div>
+  <div id="keyGuide" aria-hidden="true">
+    <span id="keyArrow">↑</span>
+  </div>
 </div>
 
 <div id="vignette"></div>
@@ -370,18 +665,90 @@
 
 <div id="start">
   <div class="panel">
+    <div class="tapeLabel">RECOVERED TAPE // 07</div>
     <h1>BACKROOMS</h1>
 
+    <div class="titleMenu">
+      <button id="enterBtn" class="titleOption">START TAPE</button>
+      <button id="titleSettingsBtn" class="titleOption">SETTINGS</button>
+    </div>
+
+    <div class="titleInstructions">
+      <strong>FIND THREE KEYS.</strong><br>
+      WASD / ARROWS: MOVE<br>
+      SHIFT: SPRINT &nbsp; F: FLASHLIGHT<br>
+      1–4: SELECT ITEM &nbsp; E: INTERACT / USE
+    </div>
+
+    <div class="menuUtility">
+      <button id="titleDebugBtn">DEBUG</button>
+    </div>
+  </div>
+</div>
+
+<div id="pause" class="hidden" aria-hidden="true">
+  <div class="panel">
+    <h1>TAPE PAUSED</h1>
     <div class="sub">
-      RECOVERED TAPE 07 — Find three keys, preserve the flashlight,
-      and unlock the marked floor hatch.
+      The hallway waits for no one.
       <br><br>
       WASD / ARROWS: MOVE &nbsp; SHIFT: SPRINT &nbsp; CTRL/C: SNEAK
       <br>
-      F: FLASHLIGHT &nbsp; E: INTERACT &nbsp; ESC: RELEASE MOUSE
+      F: FLASHLIGHT &nbsp; E: INTERACT &nbsp; ESC: PAUSE
+      <br>
+      1–4: SELECT INVENTORY SLOT &nbsp; E: USE ITEM
     </div>
+    <div class="menuActions">
+      <button id="resumeBtn">RESUME TAPE</button>
+      <button id="restartBtn">REWIND TAPE</button>
+    </div>
+    <div class="menuUtility">
+      <button id="pauseSettingsBtn">SETTINGS</button>
+      <button id="pauseDebugBtn">DEBUG</button>
+    </div>
+  </div>
+</div>
 
-    <button id="enterBtn">ENTER THE TAPE</button>
+<div id="settings" class="hidden" aria-hidden="true">
+  <div class="panel">
+    <h1>SETTINGS</h1>
+    <label class="volumeControl" for="volumeRange">
+      <span>MASTER VOLUME</span>
+      <span id="volumeValue">155%</span>
+      <input id="volumeRange" type="range" min="0" max="2" value="1.55" step="0.05" />
+    </label>
+    <div class="menuActions">
+      <button id="closeSettingsBtn">BACK</button>
+    </div>
+  </div>
+</div>
+
+<div id="debug" class="hidden" aria-hidden="true">
+  <div class="panel">
+    <h1>DEBUG</h1>
+    <label class="debugOption" for="infiniteStaminaToggle">
+      <span>INFINITE STAMINA</span>
+      <input id="infiniteStaminaToggle" type="checkbox" />
+    </label>
+    <label class="debugOption" for="infiniteFlashlightToggle">
+      <span>INFINITE FLASHLIGHT</span>
+      <input id="infiniteFlashlightToggle" type="checkbox" />
+    </label>
+    <label class="debugOption" for="infiniteHealthToggle">
+      <span>INFINITE HEALTH</span>
+      <input id="infiniteHealthToggle" type="checkbox" />
+    </label>
+    <label class="debugOption" for="nearbyMonsterToggle">
+      <span>MONSTER NEARBY AT START</span>
+      <input id="nearbyMonsterToggle" type="checkbox" />
+    </label>
+    <label class="debugOption" for="superSpeedToggle">
+      <span>SUPER SPEED</span>
+      <input id="superSpeedToggle" type="checkbox" />
+    </label>
+    <div class="menuActions">
+      <button id="closeDebugBtn">BACK</button>
+    </div>
   </div>
 </div>
 
@@ -393,10 +760,19 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/GLTFLoader.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
 
-<script>
+<script type="module">
+import * as THREE from "three";
+import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
+import { FBXLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/FBXLoader.js";
+
 (() => {
   "use strict";
 
@@ -416,11 +792,11 @@
     "#####.###.#.#########",
     "#K..#.#.#.........#.#",
     "#.#.#.#.#.###.....#.#",
-    "#.....#.....#.......#",
+    "#.....#.....#..K....#",
     "#.######..###.....#.#",
     "#.#...............#.#",
     "#.###.#########.#.#.#",
-    "#.....#EK.......#.MK#",
+    "#.....#E........#.MK#",
     "#####################"
   ];
 
@@ -444,8 +820,8 @@
   document.body.prepend(renderer.domElement);
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x19180f);
-  scene.fog = new THREE.FogExp2(0x252316, 0.036);
+  scene.background = new THREE.Color(0x020201);
+  scene.fog = new THREE.FogExp2(0x080704, 0.043);
 
   const camera = new THREE.PerspectiveCamera(72, 4 / 3, 0.05, 70);
   camera.rotation.order = "YXZ";
@@ -455,6 +831,24 @@
   const ui = {
     start: $("start"),
     enter: $("enterBtn"),
+    settings: $("settings"),
+    debug: $("debug"),
+    titleSettings: $("titleSettingsBtn"),
+    pauseSettings: $("pauseSettingsBtn"),
+    closeSettings: $("closeSettingsBtn"),
+    titleDebug: $("titleDebugBtn"),
+    pauseDebug: $("pauseDebugBtn"),
+    closeDebug: $("closeDebugBtn"),
+    infiniteStamina: $("infiniteStaminaToggle"),
+    infiniteFlashlight: $("infiniteFlashlightToggle"),
+    infiniteHealth: $("infiniteHealthToggle"),
+    nearbyMonster: $("nearbyMonsterToggle"),
+    superSpeed: $("superSpeedToggle"),
+    volumeRange: $("volumeRange"),
+    volumeValue: $("volumeValue"),
+    pause: $("pause"),
+    resume: $("resumeBtn"),
+    restart: $("restartBtn"),
     ending: $("ending"),
     endTitle: $("endTitle"),
     endText: $("endText"),
@@ -464,7 +858,11 @@
     healthText: $("healthText"),
     staminaText: $("staminaText"),
     batteryText: $("batteryText"),
+    inventorySlots: Array.from(document.querySelectorAll(".inventorySlot")),
+    bandageCount: $("bandageCount"),
     keyText: $("keyText"),
+    keyGuide: $("keyGuide"),
+    keyArrow: $("keyArrow"),
     stateText: $("stateText"),
     prompt: $("prompt"),
     toast: $("toast"),
@@ -708,21 +1106,103 @@
   scene.add(
     new THREE.HemisphereLight(
       0xc9c58d,
-      0x17150e,
-      0.32
+      0x000000,
+      0.018
     )
   );
 
   const flickerLights = [];
   const panelGeometry = new THREE.PlaneGeometry(1.9, 0.58);
 
-  for (let r = 1; r < ROWS - 1; r++) {
-    for (let c = 1; c < COLS - 1; c++) {
-      if (
-        walkable(r, c) &&
-        (r * 7 + c * 11) % 17 === 0 &&
-        flickerLights.length < 26
-      ) {
+  function chooseLightCells(count) {
+    const candidates = [];
+
+    for (let r = 1; r < ROWS - 1; r++) {
+      for (let c = 1; c < COLS - 1; c++) {
+        if (walkable(r, c)) {
+          candidates.push({
+            r,
+            c,
+            selected: false,
+            nearestScore: Infinity
+          });
+        }
+      }
+    }
+
+    const selected = [];
+    let next =
+      candidates.find(({ r, c }) => MAP[r][c] === "S") ||
+      candidates[0];
+
+    while (next && selected.length < count) {
+      next.selected = true;
+      selected.push(next);
+
+      const distances = new Map([
+        [cellKey(next.r, next.c), 0]
+      ]);
+      const queue = [{ r: next.r, c: next.c }];
+
+      for (let index = 0; index < queue.length; index++) {
+        const cell = queue[index];
+        const distance = distances.get(cellKey(cell.r, cell.c));
+
+        for (const [rowOffset, columnOffset] of [
+          [1, 0],
+          [-1, 0],
+          [0, 1],
+          [0, -1]
+        ]) {
+          const r = cell.r + rowOffset;
+          const c = cell.c + columnOffset;
+          const key = cellKey(r, c);
+
+          if (walkable(r, c) && !distances.has(key)) {
+            distances.set(key, distance + 1);
+            queue.push({ r, c });
+          }
+        }
+      }
+
+      next = null;
+
+      for (const candidate of candidates) {
+        if (candidate.selected) {
+          continue;
+        }
+
+        const pathDistance =
+          distances.get(cellKey(candidate.r, candidate.c)) ?? Infinity;
+        const physicalDistance = Math.hypot(
+          candidate.r - selected[selected.length - 1].r,
+          candidate.c - selected[selected.length - 1].c
+        );
+        const separation = Math.min(
+          pathDistance,
+          physicalDistance * 1.4
+        );
+
+        candidate.nearestScore = Math.min(
+          candidate.nearestScore,
+          separation
+        );
+
+        if (
+          !next ||
+          candidate.nearestScore > next.nearestScore
+        ) {
+          next = candidate;
+        }
+      }
+    }
+
+    return selected;
+  }
+
+  const lightCells = chooseLightCells(38);
+
+  for (const { r, c } of lightCells) {
         const position = gridToWorld(c, r);
 
         const panel = new THREE.Mesh(
@@ -745,9 +1225,9 @@
 
         const light = new THREE.PointLight(
           0xfff2a6,
-          0.55,
-          13,
-          2.1
+          0.82,
+          12,
+          2
         );
 
         light.position.set(
@@ -760,20 +1240,41 @@
 
         flickerLights.push({
           light,
+          panel,
           position: position.clone(),
-          base: 0.45 + rng() * 0.22,
-          phase: rng() * 10
+          base: 0.72 + rng() * 0.3,
+          phase: rng() * 10,
+          flickerStart: 0,
+          flickerUntil: 0,
+          flickerPattern: 0,
+          nextFlicker: 1 + rng() * 4
         });
-      }
-    }
   }
 
   const startCell = { r: 1, c: 1 };
   const monsterCell = { r: 19, c: 18 };
   const exitCell = { r: 19, c: 7 };
+  const startPosition = gridToWorld(startCell.c, startCell.r);
+  const menuLight = flickerLights.reduce(
+    (closest, entry) =>
+      entry.position.distanceToSquared(startPosition) <
+      closest.position.distanceToSquared(startPosition)
+        ? entry
+        : closest
+  );
+
+  menuLight.nextFlicker = 0.7 + rng() * 1.4;
 
   const keyCells = [];
   const batteryCells = [];
+  const bandageCells = [
+    {
+      r: startCell.r,
+      c: startCell.c,
+      offsetX: 0,
+      offsetZ: 1.15
+    }
+  ];
   const openCells = [];
 
   for (let r = 0; r < ROWS; r++) {
@@ -794,31 +1295,29 @@
     }
   }
 
-  while (batteryCells.length < 6) {
+  while (bandageCells.length < 5) {
     const cell = openCells[
       Math.floor(rng() * openCells.length)
     ];
-
-    const duplicate = batteryCells.some(
-      (battery) =>
-        battery.r === cell.r &&
-        battery.c === cell.c
-    );
-
+    const occupied =
+      batteryCells.some(({ r, c }) => r === cell.r && c === cell.c) ||
+      keyCells.some(({ r, c }) => r === cell.r && c === cell.c) ||
+      bandageCells.some(({ r, c }) => r === cell.r && c === cell.c);
     const startDistance =
       Math.abs(cell.r - startCell.r) +
       Math.abs(cell.c - startCell.c);
 
     if (
-      !duplicate &&
-      startDistance > 7 &&
+      !occupied &&
+      startDistance > 5 &&
       MAP[cell.r][cell.c] === "."
     ) {
-      batteryCells.push({ ...cell });
+      bandageCells.push({ ...cell });
     }
   }
 
   const collectibles = [];
+  let guidedKey = null;
 
   function addKey(c, r) {
     const group = new THREE.Group();
@@ -922,6 +1421,52 @@
     });
   }
 
+  function loadBandages() {
+    const loader = new GLTFLoader();
+
+    loader.load(
+      "ps1_style_health_bandage.glb",
+      (gltf) => {
+        const template = gltf.scene;
+        const box = new THREE.Box3().setFromObject(template);
+        const size = box.getSize(new THREE.Vector3());
+        const center = box.getCenter(new THREE.Vector3());
+        const maxAxis = Math.max(size.x, size.y, size.z) || 1;
+
+        template.position.sub(center);
+        template.scale.multiplyScalar(0.72 / maxAxis);
+        template.updateMatrixWorld(true);
+
+        const groundedBox = new THREE.Box3().setFromObject(template);
+        template.position.y -= groundedBox.min.y;
+
+        for (const cell of bandageCells) {
+          const group = new THREE.Group();
+          const visual = template.clone(true);
+          const position = gridToWorld(cell.c, cell.r);
+
+          group.add(visual);
+          group.position.set(
+            position.x + (cell.offsetX || 0),
+            0.12,
+            position.z + (cell.offsetZ || 0)
+          );
+          scene.add(group);
+
+          collectibles.push({
+            type: "bandage",
+            object: group,
+            taken: false,
+            baseY: 0.12,
+            phase: rng() * 6.2
+          });
+        }
+      },
+      undefined,
+      () => console.warn("Bandage GLB could not be loaded.")
+    );
+  }
+
   keyCells.forEach((cell) => {
     addKey(cell.c, cell.r);
   });
@@ -929,6 +1474,8 @@
   batteryCells.forEach((cell) => {
     addBattery(cell.c, cell.r);
   });
+
+  loadBandages();
 
   const hatchPosition = gridToWorld(
     exitCell.c,
@@ -1012,6 +1559,81 @@
   }
 
   let monsterMixer = null;
+  let monsterRunActions = [];
+  let monsterAttackAction = null;
+  let monsterAttackActive = false;
+
+  function rigKey(name) {
+    return name
+      .replace(/_[0-9]+$/, "")
+      .replace(/[^a-zA-Z0-9]/g, "")
+      .toLowerCase();
+  }
+
+  function loadMonsterAttackAnimation(model) {
+    const loader = new FBXLoader();
+
+    loader.load(
+      "Mutant Punch.fbx",
+      (fbx) => {
+        const sourceClip = fbx.animations[0];
+
+        if (!sourceClip || !monsterMixer) {
+          return;
+        }
+
+        const targetBones = new Map();
+
+        model.traverse((node) => {
+          const name = node.userData?.name || node.name || "";
+
+          if (name) {
+            targetBones.set(rigKey(name), node);
+          }
+        });
+
+        const tracks = sourceClip.tracks.flatMap((track) => {
+          const propertyStart = track.name.lastIndexOf(".");
+
+          if (propertyStart < 0) {
+            return [];
+          }
+
+          const sourceBone = track.name.slice(0, propertyStart);
+          const property = track.name.slice(propertyStart + 1);
+          const key = rigKey(sourceBone);
+          const targetBone = targetBones.get(key);
+
+          if (
+            !targetBone ||
+            (key === "mixamorighips" && property === "position")
+          ) {
+            return [];
+          }
+
+          const remappedTrack = track.clone();
+          remappedTrack.name = `${targetBone.name}.${property}`;
+          return [remappedTrack];
+        });
+
+        if (tracks.length === 0) {
+          console.warn("Punch animation could not be retargeted.");
+          return;
+        }
+
+        const attackClip = new THREE.AnimationClip(
+          "Thin Man Punch",
+          sourceClip.duration,
+          tracks
+        );
+
+        monsterAttackAction = monsterMixer.clipAction(attackClip);
+        monsterAttackAction.setLoop(THREE.LoopRepeat, Infinity);
+      },
+      undefined,
+      () => console.warn("Mutant Punch.fbx could not be loaded.")
+    );
+  }
 
   function makeMonsterFallback() {
     const group = new THREE.Group();
@@ -1077,8 +1699,8 @@
     const box = new THREE.Box3().setFromObject(model);
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
-    const maxAxis = Math.max(size.x, size.y, size.z) || 1;
-    const scale = 3.35 / maxAxis;
+    const modelHeight = size.y || 1;
+    const scale = 2.55 / modelHeight;
 
     model.position.sub(center);
     model.scale.multiplyScalar(scale);
@@ -1094,35 +1716,78 @@
     group.add(fallback);
     group.userData = fallback.userData;
 
-    if (!THREE.GLTFLoader) {
-      console.warn("GLTFLoader unavailable; using fallback monster.");
-      return group;
-    }
-
-    const loader = new THREE.GLTFLoader();
+    const loader = new GLTFLoader();
 
     loader.load(
-      "bacteria_lifeform_backrooms.glb",
+      "the_thin_man_lowpoly.glb",
       (gltf) => {
         const model = gltf.scene;
+        const skinnedMeshes = [];
 
         normalizeMonsterModel(model);
 
         model.traverse((child) => {
+          if (child.isSkinnedMesh) {
+            skinnedMeshes.push(child);
+          }
+
           if (!child.isMesh) {
             return;
           }
 
           child.frustumCulled = false;
 
-          if (child.material) {
-            child.material.side = THREE.DoubleSide;
-            child.material.roughness = Math.max(
-              child.material.roughness ?? 0.75,
+          for (const material of (
+            Array.isArray(child.material)
+              ? child.material
+              : [child.material]
+          )) {
+            material.side = THREE.DoubleSide;
+            material.roughness = Math.max(
+              material.roughness ?? 0.75,
               0.75
             );
+
+            if (material.emissive) {
+              material.emissive.setRGB(0, 0, 0);
+              material.emissiveIntensity = 0;
+              material.emissiveMap = null;
+              material.needsUpdate = true;
+            }
           }
         });
+
+        function findRigNode(nameFragment) {
+          let match = null;
+
+          model.traverse((child) => {
+            const originalName =
+              child.userData?.name ||
+              child.name ||
+              "";
+
+            if (
+              !match &&
+              originalName.includes(nameFragment)
+            ) {
+              match = child;
+            }
+          });
+
+          return match;
+        }
+
+        const bones = {
+          head: findRigNode("Head_06"),
+          neck: findRigNode("Neck_05"),
+          spine: findRigNode("Spine2_04"),
+          leftArm: findRigNode("LeftArm_09"),
+          rightArm: findRigNode("RightArm_017"),
+          leftForeArm: findRigNode("LeftForeArm_010"),
+          rightForeArm: findRigNode("RightForeArm_018"),
+          leftToe: findRigNode("LeftToeBase_027"),
+          rightToe: findRigNode("RightToeBase_031")
+        };
 
         group.clear();
         group.add(model);
@@ -1130,21 +1795,42 @@
           glbModel: model,
           limbs: [],
           ribs: [],
-          head: model
+          head: bones.head || model,
+          bones,
+          skinnedMeshes
         };
 
         if (gltf.animations.length > 0) {
           monsterMixer = new THREE.AnimationMixer(model);
+          monsterRunActions = [];
 
           for (const clip of gltf.animations) {
-            monsterMixer.clipAction(clip).play();
+            const inPlaceClip = clip.clone();
+
+            // The Mixamo clip translates the hips upward by over a meter.
+            // Movement is already handled by the game's AI, so remove that
+            // root motion and keep the rig planted on the floor.
+            inPlaceClip.tracks = inPlaceClip.tracks.filter(
+              (track) =>
+                !(
+                  track.name.endsWith(".position") &&
+                  track.name.includes("Hips_01")
+                )
+            );
+
+            const action = monsterMixer.clipAction(inPlaceClip);
+            action.setLoop(THREE.LoopRepeat, Infinity);
+            action.play();
+            monsterRunActions.push(action);
           }
+
+          loadMonsterAttackAnimation(model);
         }
       },
       undefined,
       () => {
         console.warn(
-          "bacteria_lifeform_backrooms.glb could not be loaded; using fallback monster."
+          "the_thin_man_lowpoly.glb could not be loaded; using fallback monster."
         );
       }
     );
@@ -1202,6 +1888,24 @@
     escaped: false
   };
 
+  const debug = {
+    infiniteStamina: false,
+    infiniteFlashlight: false,
+    infiniteHealth: false,
+    nearbyMonster: false,
+    superSpeed: false
+  };
+
+  const inventory = {
+    selectedSlot: 0,
+    slots: [
+      { type: "bandage", count: 0 },
+      null,
+      null,
+      null
+    ]
+  };
+
   player.pos.y = 0;
 
   const keysDown = new Set();
@@ -1209,6 +1913,7 @@
   let pointerLocked = false;
   let manualControls = false;
   let started = false;
+  let gamePaused = false;
   let toastTimer = 0;
   let shake = 0;
   let damagePulse = 0;
@@ -1216,9 +1921,12 @@
   let lastStepIndex = -1;
   let elapsed = 0;
   let interactionReady = false;
+  let nearbyBandage = null;
 
   const tempPlayerFloorPosition =
     new THREE.Vector3();
+  const leftToePosition = new THREE.Vector3();
+  const rightToePosition = new THREE.Vector3();
 
   function canOccupy(x, z) {
     const points = [
@@ -1265,6 +1973,77 @@
 
     ui.keyText.textContent =
       `KEYS ${player.keys}/${keyCells.length}`;
+
+    updateInventoryUI();
+    updateKeyGuide();
+  }
+
+  function updateInventoryUI() {
+    ui.inventorySlots.forEach((slot, index) => {
+      slot.classList.toggle(
+        "selected",
+        index === inventory.selectedSlot
+      );
+    });
+
+    ui.bandageCount.textContent =
+      `x${inventory.slots[0].count}`;
+  }
+
+  function updateKeyGuide() {
+    if (!started || player.dead || player.escaped) {
+      ui.keyGuide.style.opacity = "0";
+      return;
+    }
+
+    if (!guidedKey || guidedKey.taken) {
+      guidedKey = null;
+      let nearestDistance = Infinity;
+
+      for (const item of collectibles) {
+        if (item.type !== "key" || item.taken) {
+          continue;
+        }
+
+        const distance = Math.hypot(
+          item.object.position.x - player.pos.x,
+          item.object.position.z - player.pos.z
+        );
+
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          guidedKey = item;
+        }
+      }
+    }
+
+    const guidePosition = guidedKey
+      ? guidedKey.object.position
+      : player.keys === keyCells.length
+        ? hatchPosition
+        : null;
+
+    if (!guidePosition) {
+      ui.keyGuide.style.opacity = "0";
+      return;
+    }
+
+    const dx = guidePosition.x - player.pos.x;
+    const dz = guidePosition.z - player.pos.z;
+    const forwardAmount =
+      dx * -Math.sin(player.yaw) +
+      dz * -Math.cos(player.yaw);
+    const rightAmount =
+      dx * Math.cos(player.yaw) +
+      dz * -Math.sin(player.yaw);
+    const relativeBearing = Math.atan2(
+      rightAmount,
+      forwardAmount
+    );
+
+    ui.keyArrow.style.transform =
+      `rotate(${relativeBearing}rad)`;
+    ui.keyGuide.style.opacity = "1";
   }
 
   function neighbors(node) {
@@ -1375,6 +2154,7 @@
     path: [],
     repath: 0,
     alert: 0,
+    attackGrace: 0,
     patrolTarget: null
   };
 
@@ -1413,13 +2193,30 @@
   }
 
   let audioContext = null;
+  let masterGain = null;
   let humGain = null;
   let noiseBuffer = null;
   let heartbeatTimer = 0;
+  let lastFlickerSound = -Infinity;
+  let gameVolume = 1.55;
+
+  function setGameVolume(value) {
+    gameVolume = clamp(Number(value), 0, 2);
+    ui.volumeRange.value = String(gameVolume);
+    ui.volumeValue.textContent = `${Math.round(gameVolume * 100)}%`;
+
+    if (masterGain && audioContext) {
+      masterGain.gain.setTargetAtTime(
+        gameVolume,
+        audioContext.currentTime,
+        0.03
+      );
+    }
+  }
 
   function initAudio() {
     if (audioContext) {
-      audioContext.resume();
+      audioContext.resume().catch(() => {});
       return;
     }
 
@@ -1428,16 +2225,30 @@
       window.webkitAudioContext
     )();
 
+    masterGain = audioContext.createGain();
+    masterGain.gain.value = gameVolume;
+
+    const compressor = audioContext.createDynamicsCompressor();
+    compressor.threshold.value = -15;
+    compressor.knee.value = 18;
+    compressor.ratio.value = 8;
+    compressor.attack.value = 0.004;
+    compressor.release.value = 0.18;
+
+    masterGain
+      .connect(compressor)
+      .connect(audioContext.destination);
+
     humGain = audioContext.createGain();
     humGain.gain.value = 0.0;
-    humGain.connect(audioContext.destination);
+    humGain.connect(masterGain);
 
     const hum = audioContext.createOscillator();
     hum.type = "sine";
     hum.frequency.value = 60;
 
     const humVolume = audioContext.createGain();
-    humVolume.gain.value = 0.052;
+    humVolume.gain.value = 0.032;
 
     hum
       .connect(humVolume)
@@ -1445,14 +2256,33 @@
 
     hum.start();
 
+    const humHarmonic = audioContext.createOscillator();
+    humHarmonic.type = "sine";
+    humHarmonic.frequency.value = 120;
+
+    const harmonicVolume = audioContext.createGain();
+    harmonicVolume.gain.value = 0.012;
+
+    humHarmonic
+      .connect(harmonicVolume)
+      .connect(humGain);
+
+    humHarmonic.start();
+
     const buzz = audioContext.createOscillator();
     buzz.type = "sawtooth";
-    buzz.frequency.value = 3480;
+    buzz.frequency.value = 118;
+
+    const buzzFilter = audioContext.createBiquadFilter();
+    buzzFilter.type = "lowpass";
+    buzzFilter.frequency.value = 460;
+    buzzFilter.Q.value = 0.8;
 
     const buzzVolume = audioContext.createGain();
-    buzzVolume.gain.value = 0.0035;
+    buzzVolume.gain.value = 0.011;
 
     buzz
+      .connect(buzzFilter)
       .connect(buzzVolume)
       .connect(humGain);
 
@@ -1486,13 +2316,13 @@
       audioContext.createBiquadFilter();
 
     noiseFilter.type = "bandpass";
-    noiseFilter.frequency.value = 780;
-    noiseFilter.Q.value = 0.8;
+    noiseFilter.frequency.value = 210;
+    noiseFilter.Q.value = 0.65;
 
     const noiseGain =
       audioContext.createGain();
 
-    noiseGain.gain.value = 0.003;
+    noiseGain.gain.value = 0.006;
 
     noiseSource
       .connect(noiseFilter)
@@ -1500,6 +2330,63 @@
       .connect(humGain);
 
     noiseSource.start();
+
+    audioContext.resume().catch(() => {});
+  }
+
+  function playLightFlickerSound(position) {
+    if (!audioContext || !noiseBuffer) {
+      return;
+    }
+
+    const now = audioContext.currentTime;
+
+    if (now - lastFlickerSound < 0.12) {
+      return;
+    }
+
+    const distance = Math.hypot(
+      player.pos.x - position.x,
+      player.pos.z - position.z
+    );
+
+    const proximity = clamp(
+      1 - (distance - 1) / 15,
+      0,
+      1
+    );
+
+    if (proximity < 0.06) {
+      return;
+    }
+
+    lastFlickerSound = now;
+
+    const source = audioContext.createBufferSource();
+    source.buffer = noiseBuffer;
+
+    const filter = audioContext.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.value = 980 + Math.random() * 420;
+    filter.Q.value = 1.3;
+
+    const volume = audioContext.createGain();
+    const gain = 0.006 + proximity * 0.032;
+
+    volume.gain.setValueAtTime(0.001, now);
+    volume.gain.linearRampToValueAtTime(gain, now + 0.008);
+    volume.gain.exponentialRampToValueAtTime(
+      0.001,
+      now + 0.11 + Math.random() * 0.12
+    );
+
+    source
+      .connect(filter)
+      .connect(volume)
+      .connect(masterGain);
+
+    source.start(now, Math.random());
+    source.stop(now + 0.28);
   }
 
   function noiseBurst(
@@ -1540,7 +2427,7 @@
     source
       .connect(filter)
       .connect(volume)
-      .connect(audioContext.destination);
+      .connect(masterGain);
 
     source.start(
       now,
@@ -1611,7 +2498,7 @@
 
     oscillator
       .connect(volume)
-      .connect(audioContext.destination);
+      .connect(masterGain);
 
     oscillator.start(time);
     oscillator.stop(time + 0.18);
@@ -1718,16 +2605,24 @@
         keysDown.has("ShiftLeft") ||
         keysDown.has("ShiftRight")
       ) &&
-      player.stamina > 1;
+      (
+        debug.infiniteStamina ||
+        player.stamina > 1
+      );
 
     const movementSpeed =
-      player.sneaking
-        ? 1.12
-        : player.sprinting
-          ? 4.18
-          : 2.28;
+      (
+        player.sneaking
+          ? 1.12
+          : player.sprinting
+            ? 4.18
+            : 2.28
+      ) *
+      (debug.superSpeed ? 3 : 1);
 
-    if (player.sprinting) {
+    if (debug.infiniteStamina) {
+      player.stamina = 100;
+    } else if (player.sprinting) {
       player.stamina = Math.max(
         0,
         player.stamina -
@@ -1794,7 +2689,10 @@
       }
     }
 
-    if (
+    if (debug.infiniteFlashlight) {
+      player.battery = 100;
+      player.flashlight = true;
+    } else if (
       player.flashlight &&
       player.battery > 0
     ) {
@@ -2002,7 +2900,8 @@
     const enabled =
       player.flashlight &&
       player.battery > 0 &&
-      !player.dead;
+      !player.dead &&
+      started;
 
     flashlight.visible = enabled;
 
@@ -2026,6 +2925,9 @@
     deltaTime,
     time
   ) {
+    nearbyBandage = null;
+    let nearestBandageDistance = Infinity;
+
     for (const item of collectibles) {
       if (item.taken) {
         continue;
@@ -2053,6 +2955,18 @@
       const distance =
         Math.hypot(dx, dz);
 
+      if (item.type === "bandage") {
+        if (
+          distance < 1.35 &&
+          distance < nearestBandageDistance
+        ) {
+          nearbyBandage = item;
+          nearestBandageDistance = distance;
+        }
+
+        continue;
+      }
+
       if (distance < 0.82) {
         item.taken = true;
         scene.remove(item.object);
@@ -2078,7 +2992,7 @@
               2.6
             );
           }
-        } else {
+        } else if (item.type === "battery") {
           player.battery = Math.min(
             100,
             player.battery + 38
@@ -2125,11 +3039,34 @@
       player.sprinting &&
       distance < 27;
 
-    if (canSee || canHear) {
+    const attackRange =
+      ai.state === "attack"
+        ? 2.25
+        : 1.9;
+    const canAttack =
+      distance < attackRange &&
+      canSee;
+    const playerGrid = worldToGrid(
+      player.pos.x,
+      player.pos.z
+    );
+
+    if (canAttack) {
+      ai.state = "attack";
+      ai.alert = 5.5;
+      ai.attackGrace = 0.3;
+      ai.path.length = 0;
+    } else if (
+      ai.state === "attack" &&
+      ai.attackGrace > 0
+    ) {
+      ai.attackGrace -= deltaTime;
+    } else if (canSee || canHear) {
       ai.state = "chase";
       ai.alert = 5.5;
     } else if (
-      ai.state === "chase"
+      ai.state === "chase" ||
+      ai.state === "attack"
     ) {
       ai.alert -= deltaTime;
 
@@ -2149,12 +3086,6 @@
 
     if (ai.state === "chase") {
       if (ai.repath <= 0) {
-        const playerGrid =
-          worldToGrid(
-            player.pos.x,
-            player.pos.z
-          );
-
         ai.path = findPath(
           monsterGrid,
           playerGrid
@@ -2163,21 +3094,41 @@
         ai.repath = 0.3;
       }
     } else if (
+      ai.state === "patrol" &&
       ai.path.length === 0 ||
+      ai.state === "patrol" &&
       ai.repath <= 0
     ) {
       choosePatrol();
       ai.repath = 3.5;
     }
 
-    const target = ai.path[0];
+    const sharesPlayerCell =
+      ai.state === "chase" &&
+      monsterGrid.r === playerGrid.r &&
+      monsterGrid.c === playerGrid.c;
+    const target =
+      ai.state === "attack"
+        ? null
+        : ai.path[0] ||
+          (sharesPlayerCell ? playerGrid : null);
 
     if (target) {
-      const targetPosition =
-        gridToWorld(
-          target.c,
-          target.r
+      const isPlayerCell =
+        ai.state === "chase" &&
+        (
+          sharesPlayerCell ||
+          (
+            target.r === playerGrid.r &&
+            target.c === playerGrid.c
+          )
         );
+      const targetPosition = isPlayerCell
+        ? tempPlayerFloorPosition
+        : gridToWorld(
+            target.c,
+            target.r
+          );
 
       const dx =
         targetPosition.x -
@@ -2190,7 +3141,10 @@
       const targetDistance =
         Math.hypot(dx, dz);
 
-      if (targetDistance < 0.16) {
+      if (
+        targetDistance <
+        (isPlayerCell ? 0.04 : 0.16)
+      ) {
         ai.path.shift();
       } else {
         const speed =
@@ -2213,23 +3167,104 @@
       }
     }
 
-    if (monsterMixer) {
-      monsterMixer.update(deltaTime);
-    }
-
     const monsterData =
       monster.userData;
 
-    monsterData.head.rotation.y =
-      Math.sin(time * 3.1) *
-        0.34 +
-      (rng() - 0.5) *
-        0.04;
+    if (monsterMixer) {
+      const usingAttackAnimation =
+        ai.state === "attack" &&
+        Boolean(monsterAttackAction);
+
+      if (usingAttackAnimation !== monsterAttackActive) {
+        if (usingAttackAnimation) {
+          for (const action of monsterRunActions) {
+            action.stop();
+          }
+
+          monsterAttackAction
+            .reset()
+            .setEffectiveTimeScale(0.82)
+            .play();
+        } else {
+          monsterAttackAction?.stop();
+
+          for (const action of monsterRunActions) {
+            action
+              .reset()
+              .setEffectiveTimeScale(
+                ai.state === "chase" ? 1.05 : 0.55
+              )
+              .play();
+          }
+        }
+
+        monsterAttackActive = usingAttackAnimation;
+      }
+
+      if (!usingAttackAnimation) {
+        for (const action of monsterRunActions) {
+          action.setEffectiveTimeScale(
+            ai.state === "chase" ? 1.05 : 0.55
+          );
+        }
+      }
+
+      monsterMixer.update(deltaTime);
+    }
+
+    if (
+      monsterData.glbModel &&
+      monsterData.bones?.leftToe &&
+      monsterData.bones?.rightToe
+    ) {
+      monster.updateMatrixWorld(true);
+      monsterData.bones.leftToe.getWorldPosition(leftToePosition);
+      monsterData.bones.rightToe.getWorldPosition(rightToePosition);
+
+      const lowestToeY = Math.min(
+        leftToePosition.y,
+        rightToePosition.y
+      );
+
+      // Keep the lowest animated toe just above the carpet. Bone positions
+      // are reliable here; the skinned mesh bounds include hidden geometry.
+      monsterData.glbModel.position.y += 0.025 - lowestToeY;
+    }
+
+    if (monsterData.bones) {
+      if (
+        ai.state === "attack" &&
+        monsterData.bones.head
+      ) {
+        const playerAngle = Math.atan2(
+          player.pos.x - monster.position.x,
+          player.pos.z - monster.position.z
+        );
+        const headTurn = clamp(
+          Math.atan2(
+            Math.sin(playerAngle - monster.rotation.y),
+            Math.cos(playerAngle - monster.rotation.y)
+          ),
+          -0.48,
+          0.48
+        );
+
+        monsterData.bones.head.rotation.y +=
+          headTurn +
+          Math.sin(time * 4.2) * 0.025;
+      }
+    } else {
+      monsterData.head.rotation.y =
+        Math.sin(time * 3.1) *
+          0.34 +
+        (rng() - 0.5) *
+          0.04;
+    }
 
     monster.scale.y =
       1 +
       Math.sin(time * 4.7) *
-        0.025;
+        0.008;
 
     monsterData.limbs.forEach(
       (limb, index) => {
@@ -2290,12 +3325,15 @@
     );
 
     ui.stateText.textContent =
-      ai.state === "chase"
-        ? "SIGNAL: MOVEMENT DETECTED"
-        : "SIGNAL: SEARCHING";
+      ai.state === "attack"
+        ? "SIGNAL: ENTITY CONTACT"
+        : ai.state === "chase"
+          ? "SIGNAL: MOVEMENT DETECTED"
+          : "SIGNAL: SEARCHING";
 
     ui.stateText.style.color =
-      ai.state === "chase"
+      ai.state === "chase" ||
+      ai.state === "attack"
         ? "#ff5148"
         : "";
 
@@ -2305,8 +3343,9 @@
     );
 
     if (
-      distance < 1.85 &&
-      !player.dead
+      canAttack &&
+      !player.dead &&
+      !debug.infiniteHealth
     ) {
       player.health -=
         deltaTime * 62;
@@ -2342,7 +3381,10 @@
     interactionReady =
       distance < 1.75;
 
-    if (interactionReady) {
+    if (nearbyBandage) {
+      ui.prompt.style.opacity = "1";
+      ui.prompt.textContent = "[ E ] PICK UP BANDAGE";
+    } else if (interactionReady) {
       ui.prompt.style.opacity = "1";
 
       if (
@@ -2365,23 +3407,63 @@
   }
 
   function interact() {
-    if (
-      !interactionReady ||
-      player.dead
-    ) {
+    if (player.dead) {
       return;
     }
 
-    if (
-      player.keys ===
-      keyCells.length
-    ) {
-      endGame(true);
-    } else {
+    if (nearbyBandage) {
+      nearbyBandage.taken = true;
+      scene.remove(nearbyBandage.object);
+      inventory.slots[0].count++;
+      nearbyBandage = null;
+      updateInventoryUI();
+      showToast("BANDAGE ADDED TO INVENTORY", 1.5);
+      noiseBurst(0.08, 0.025, 720);
+      return;
+    }
+
+    if (interactionReady) {
+      if (
+        player.keys ===
+        keyCells.length
+      ) {
+        endGame(true);
+      } else {
+        showToast(
+          "THE LOCK WILL NOT TURN",
+          1.2
+        );
+      }
+
+      return;
+    }
+
+    useSelectedInventoryItem();
+  }
+
+  function useSelectedInventoryItem() {
+    const slot = inventory.slots[inventory.selectedSlot];
+
+    if (!slot || slot.count <= 0) {
+      showToast("INVENTORY SLOT EMPTY", 0.8);
+      return;
+    }
+
+    if (slot.type === "bandage") {
+      if (player.health >= 100) {
+        showToast("HEALTH ALREADY FULL", 0.9);
+        return;
+      }
+
+      const recovered = Math.min(35, 100 - player.health);
+      slot.count--;
+      player.health = Math.min(100, player.health + 35);
+      updateUI();
       showToast(
-        "THE LOCK WILL NOT TURN",
-        1.2
+        `BANDAGE APPLIED +${Math.ceil(recovered)} HEALTH`,
+        1.8
       );
+      noiseBurst(0.1, 0.035, 680);
     }
   }
 
@@ -2465,22 +3547,69 @@
     time
   ) {
     for (const entry of flickerLights) {
-      const glitch =
-        rng() < 0.006
-          ? 0.05
-          : 1;
+      if (time >= entry.nextFlicker) {
+        entry.flickerStart = time;
+        entry.flickerPattern = Math.floor(rng() * 3);
+        entry.flickerUntil =
+          time +
+          (entry.flickerPattern === 2
+            ? 0.42 + rng() * 0.42
+            : 0.18 + rng() * 0.38);
+        entry.nextFlicker =
+          entry.flickerUntil +
+          2 +
+          rng() * 4;
+
+        playLightFlickerSound(entry.position);
+      }
+
+      let flicker = 1;
+
+      if (time < entry.flickerUntil) {
+        const progress =
+          (time - entry.flickerStart) /
+          (entry.flickerUntil - entry.flickerStart);
+        const tick = Math.floor(
+          progress *
+            (entry.flickerPattern === 0 ? 13 : 8) +
+            entry.phase
+        );
+
+        if (entry.flickerPattern === 0) {
+          flicker =
+            tick % 4 === 0 || tick % 5 === 0
+              ? 0.06
+              : 0.82;
+        } else if (entry.flickerPattern === 1) {
+          flicker =
+            tick % 3 === 0
+              ? 0.14
+              : 0.55 + Math.sin(progress * 26) * 0.24;
+        } else {
+          flicker =
+            progress < 0.2 || progress > 0.78
+              ? 0.5
+              : 0.035;
+        }
+      }
+
+      const baseline =
+        0.94 +
+        Math.sin(
+          time * 7 +
+          entry.phase
+        ) *
+          0.04;
+      const brightness = baseline * flicker;
 
       entry.light.intensity =
-        entry.base *
-        (
-          0.94 +
-          Math.sin(
-            time * 7 +
-            entry.phase
-          ) *
-            0.04
-        ) *
-        glitch;
+        entry.base * brightness;
+
+      entry.panel.material.color.setRGB(
+        0.87 * (0.18 + brightness * 0.82),
+        0.85 * (0.18 + brightness * 0.82),
+        0.63 * (0.18 + brightness * 0.82)
+      );
     }
 
     if (toastTimer > 0) {
@@ -2530,11 +3659,11 @@
     manualControls = true;
     pointerLocked = true;
     ui.start.classList.add("hidden");
+    ui.pause.classList.add("hidden");
+    ui.pause.setAttribute("aria-hidden", "true");
   }
 
-  function startTape() {
-    started = true;
-    initAudio();
+  function requestGameplayFocus() {
     enterGameplayWithoutPointerLock();
 
     const lockPromise =
@@ -2550,9 +3679,214 @@
     }
   }
 
+  function startTape() {
+    started = true;
+    document.body.classList.remove("title-screen");
+    ui.settings.classList.add("hidden");
+    ui.settings.setAttribute("aria-hidden", "true");
+    ui.debug.classList.add("hidden");
+    ui.debug.setAttribute("aria-hidden", "true");
+
+    if (debug.nearbyMonster) {
+      spawnMonsterNearPlayer();
+    }
+
+    initAudio();
+    requestGameplayFocus();
+  }
+
+  function spawnMonsterNearPlayer() {
+    const offsets = [
+      [0, 2.35],
+      [2.35, 0],
+      [-2.35, 0],
+      [0, -2.35]
+    ];
+    const [offsetX, offsetZ] =
+      offsets.find(([x, z]) =>
+        canOccupy(
+          player.pos.x + x,
+          player.pos.z + z
+        )
+      ) || offsets[0];
+
+    monster.position.set(
+      player.pos.x + offsetX,
+      0,
+      player.pos.z + offsetZ
+    );
+    monster.rotation.y = Math.atan2(
+      player.pos.x - monster.position.x,
+      player.pos.z - monster.position.z
+    );
+    ai.state = "chase";
+    ai.alert = 5.5;
+    ai.repath = 0;
+    ai.path = [];
+  }
+
+  function openSettings() {
+    ui.settings.classList.remove("hidden");
+    ui.settings.setAttribute("aria-hidden", "false");
+  }
+
+  function closeSettings() {
+    ui.settings.classList.add("hidden");
+    ui.settings.setAttribute("aria-hidden", "true");
+  }
+
+  function openDebug() {
+    ui.debug.classList.remove("hidden");
+    ui.debug.setAttribute("aria-hidden", "false");
+  }
+
+  function closeDebug() {
+    ui.debug.classList.add("hidden");
+    ui.debug.setAttribute("aria-hidden", "true");
+  }
+
+  function setInfiniteStamina(enabled) {
+    debug.infiniteStamina = enabled;
+    ui.infiniteStamina.checked = enabled;
+
+    if (enabled) {
+      player.stamina = 100;
+    }
+  }
+
+  function setInfiniteFlashlight(enabled) {
+    debug.infiniteFlashlight = enabled;
+    ui.infiniteFlashlight.checked = enabled;
+
+    if (enabled) {
+      player.battery = 100;
+      player.flashlight = true;
+    }
+  }
+
+  function setInfiniteHealth(enabled) {
+    debug.infiniteHealth = enabled;
+    ui.infiniteHealth.checked = enabled;
+
+    if (enabled) {
+      player.health = 100;
+      updateUI();
+    }
+  }
+
+  function setNearbyMonster(enabled) {
+    debug.nearbyMonster = enabled;
+    ui.nearbyMonster.checked = enabled;
+  }
+
+  function setSuperSpeed(enabled) {
+    debug.superSpeed = enabled;
+    ui.superSpeed.checked = enabled;
+  }
+
+  function pauseTape() {
+    if (player.dead || player.escaped) {
+      return;
+    }
+
+    pointerLocked = false;
+    manualControls = false;
+    gamePaused = true;
+    keysDown.clear();
+
+    if (audioContext && audioContext.state === "running") {
+      audioContext.suspend().catch(() => {});
+    }
+
+    ui.pause.classList.remove("hidden");
+    ui.pause.setAttribute("aria-hidden", "false");
+  }
+
+  function resumeTape() {
+    gamePaused = false;
+    initAudio();
+    requestGameplayFocus();
+  }
+
   ui.enter.addEventListener(
     "click",
     startTape
+  );
+
+  ui.titleSettings.addEventListener(
+    "click",
+    openSettings
+  );
+
+  ui.pauseSettings.addEventListener(
+    "click",
+    openSettings
+  );
+
+  ui.titleDebug.addEventListener(
+    "click",
+    openDebug
+  );
+
+  ui.pauseDebug.addEventListener(
+    "click",
+    openDebug
+  );
+
+  ui.closeSettings.addEventListener(
+    "click",
+    closeSettings
+  );
+
+  ui.closeDebug.addEventListener(
+    "click",
+    closeDebug
+  );
+
+  ui.volumeRange.addEventListener(
+    "input",
+    (event) => setGameVolume(event.target.value)
+  );
+
+  ui.infiniteStamina.addEventListener(
+    "change",
+    (event) => setInfiniteStamina(event.target.checked)
+  );
+
+  ui.infiniteFlashlight.addEventListener(
+    "change",
+    (event) => setInfiniteFlashlight(event.target.checked)
+  );
+
+  ui.infiniteHealth.addEventListener(
+    "change",
+    (event) => setInfiniteHealth(event.target.checked)
+  );
+
+  ui.nearbyMonster.addEventListener(
+    "change",
+    (event) => setNearbyMonster(event.target.checked)
+  );
+
+  ui.superSpeed.addEventListener(
+    "change",
+    (event) => setSuperSpeed(event.target.checked)
+  );
+
+  ui.start.addEventListener(
+    "pointerdown",
+    initAudio,
+    { once: true }
+  );
+
+  ui.resume.addEventListener(
+    "click",
+    resumeTape
+  );
+
+  ui.restart.addEventListener(
+    "click",
+    () => location.reload()
   );
 
   document.addEventListener(
@@ -2574,20 +3908,16 @@
           "hidden"
         );
 
+        ui.pause.classList.add("hidden");
+        ui.pause.setAttribute("aria-hidden", "true");
+
         initAudio();
       } else if (
         started &&
         !player.dead &&
         !player.escaped
       ) {
-        ui.enter.textContent =
-          "RESUME TAPE";
-
-        ui.start.classList.remove(
-          "hidden"
-        );
-
-        keysDown.clear();
+        pauseTape();
       }
     }
   );
@@ -2632,6 +3962,53 @@
       }
 
       keysDown.add(event.code);
+
+      if (
+        /^Digit[1-4]$/.test(event.code) &&
+        !event.repeat &&
+        pointerLocked
+      ) {
+        inventory.selectedSlot =
+          Number(event.code.slice(-1)) - 1;
+        updateInventoryUI();
+
+        const selected =
+          inventory.slots[inventory.selectedSlot];
+        showToast(
+          selected
+            ? `SELECTED: ${selected.type.toUpperCase()}`
+            : "SELECTED: EMPTY",
+          0.65
+        );
+      }
+
+      if (
+        event.code === "Escape" &&
+        !event.repeat &&
+        !ui.settings.classList.contains("hidden")
+      ) {
+        closeSettings();
+        return;
+      }
+
+      if (
+        event.code === "Escape" &&
+        !event.repeat &&
+        !ui.debug.classList.contains("hidden")
+      ) {
+        closeDebug();
+        return;
+      }
+
+      if (
+        event.code === "Escape" &&
+        !event.repeat &&
+        pointerLocked &&
+        manualControls
+      ) {
+        pauseTape();
+        return;
+      }
 
       if (
         event.code === "Enter" &&
@@ -2700,6 +4077,21 @@
   choosePatrol();
   updateUI();
 
+  function updateTitleScene() {
+    camera.position.set(
+      menuLight.position.x,
+      EYE_H,
+      menuLight.position.z
+    );
+
+    camera.rotation.set(
+      1.03,
+      -0.32,
+      0,
+      "YXZ"
+    );
+  }
+
   let lastTime = performance.now();
 
   function gameLoop(now) {
@@ -2712,17 +4104,27 @@
     );
 
     lastTime = now;
-    elapsed += deltaTime;
 
-    updatePlayer(
-      deltaTime,
-      elapsed
-    );
+    if (!gamePaused) {
+      elapsed += deltaTime;
+    }
 
-    updateFlashlight(deltaTime);
+    if (started && !gamePaused) {
+      updatePlayer(
+        deltaTime,
+        elapsed
+      );
+    } else if (!started) {
+      updateTitleScene();
+    }
+
+    if (!gamePaused) {
+      updateFlashlight(deltaTime);
+    }
 
     if (
       started &&
+      !gamePaused &&
       !player.dead &&
       !player.escaped
     ) {
@@ -2739,12 +4141,14 @@
       updateHatch();
     }
 
-    updateLightHum();
+    if (!gamePaused) {
+      updateLightHum();
 
-    updateEffects(
-      deltaTime,
-      elapsed
-    );
+      updateEffects(
+        deltaTime,
+        elapsed
+      );
+    }
 
     renderer.render(
       scene,
